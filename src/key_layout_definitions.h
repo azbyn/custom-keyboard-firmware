@@ -8,21 +8,8 @@
 
 #include "pins.h"
 #include "keyboard_state_machine.h"
+#include "usb_hid.h"
 
-//#include "usb_hid.h"
-//#include "keyboard_matrix.h"
-//#include "display.h"
-
-
-//#include <bsp/board_api.h>
-//#include <pico/stdlib.h>
-//#include <pico/multicore.h>
-
-
-//#include "usb_hid.h"
-//#include "keyboard_matrix.h"
-//#include "display.h"
-//#include "keyboard_logic.h"
 
 
 namespace key_layout_definitions {
@@ -246,6 +233,16 @@ constexpr std::array<std::array<KeyAction, 0x16>, 0x39> winKeyActions = ([]() {
     res[HID_KEY_C][ALT] = KA_KeyWithModifier({0, HID_KEY_CAPS_LOCK}, "Caps");
     res[HID_KEY_N][ALT] = KA_KeyWithModifier({0, HID_KEY_NUM_LOCK}, "NumL");
 
+    res[HID_KEY_M][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+        auto num = sm.getStateSnapshot().musicItemNum;
+        if (num <= 0 || num > 9) return;
+        uint8_t key = HID_KEY_1 - 1 + num;
+        KeyWithModifier seq[2] = {
+            {KEYBOARD_MODIFIER_LEFTGUI, key},
+            {0, 0}
+        };
+        UsbHid::getInstance().sendSequence(seq, 2);
+    }, "Music");
 
     res[HID_KEY_M][CTRL] = KA_MediaKey(HID_USAGE_CONSUMER_MUTE, "Mute");
 

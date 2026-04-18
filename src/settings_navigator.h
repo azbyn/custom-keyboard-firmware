@@ -97,7 +97,6 @@ constexpr SettingItem setting = {
 namespace BrightnessSetting {
 
 constexpr void move(int value, KeyboardStateSnapshot& s)  {
-    (void) value;
     int new_val = ((int)s.screenBrightness) + value * 64;
 
     //magical code so you don't get different values when you go backward vs forward,
@@ -121,6 +120,31 @@ inline const char* getValName(const KeyboardStateSnapshot& s)  {
 
 constexpr SettingItem setting = {
     .name = "Display Bg",
+    .move = &move,
+    .getValName = &getValName
+};
+
+};
+
+namespace MusicNumSetting {
+
+constexpr void move(int value, KeyboardStateSnapshot& s)  {
+    int new_val = s.musicItemNum + value;
+    if (new_val < 1)
+        new_val = 9;
+    else if (new_val > 9)
+        new_val = 1;
+
+    s.musicItemNum = new_val;
+}
+static char buffer[4];
+inline const char* getValName(const KeyboardStateSnapshot& s)  {
+    snprintf(buffer, sizeof(buffer), "%d", s.musicItemNum);
+    return buffer;
+}
+
+constexpr SettingItem setting = {
+    .name = "Music Num",
     .move = &move,
     .getValName = &getValName
 };
@@ -168,6 +192,12 @@ constexpr SettingItem back = {
 
 class SettingsNavigator {
     int currentSettingIdx = 0;
+    // int getTopOffset = 0;
+
+    //defined in keyboard logic
+    // static constexpr int getMaxDisplaySz() {
+    //     return MenuModeDisplayer::sz_y;
+    // }
 
 public:
     static constexpr const SettingItem* settingItems[] = {
@@ -175,6 +205,7 @@ public:
         &ShowBgSetting::setting,
         &BrightnessSetting::setting,
         &AutoNoCapsSetting::setting,
+        &MusicNumSetting::setting,
         
         &MenuButtons::restart,
         &MenuButtons::bootloader,
@@ -202,6 +233,7 @@ public:
     void right() { settingItems[currentSettingIdx]->move(+1, getSS());  }
 
     void exit() { KeyboardStateMachine::getInstance().setDisplayState(DS_Normal); }
+
 private:
     KeyboardStateSnapshot& getSS() { return KeyboardStateMachine::getMutableStateSnapshot(); }
     void moveVert(int y) {
@@ -211,5 +243,6 @@ private:
         else if (new_val < 0) new_val = settingItemsLength - 1;
 
         currentSettingIdx = new_val;
+        KeyboardStateMachine::getInstance().forceRedraw();
     }
 };

@@ -27,27 +27,23 @@ struct KeyboardStateSnapshot {
     bool ruskiMode;
     bool composeMode;
 
-    //not part of "state" so we can remember the previous state
+    //not part of "DisplayState" so we can remember the previous state
     bool usbSuspended = false;
     bool usbMounted = false;
 
     bool keyPressed = false;
-
-    
     DisplayState state = DS_Normal; 
     
     //stats
     uint32_t secSinceBoot = 0;
     uint32_t updatesLastS = 0;
     
-    // KeyboardSettings settings;//settings
+    //settings
     UnicodeInputMode unicodeInputMode = UIM_WinCompose;
     bool showBg = true;
     uint8_t screenBrightness = 255;
     bool autoNoCaps = true;
-
-
-
+    int musicItemNum = 7;
 };
 
 class KeyboardStateMachine {
@@ -164,7 +160,7 @@ public:
         stateSnapshot.keyPressed = value;
         forceRedraw();
     }
-private:
+// private:
 //defined in keyboard logic.cpp to make c++ happy about cyclic dependencies
     void forceRedraw();
 };
