@@ -29,6 +29,7 @@ namespace key_layout_definitions {
 constexpr uint8_t ALT   = 0x1;
 constexpr uint8_t CTRL  = 0x2;
 constexpr uint8_t SHIFT = 0x4;
+constexpr uint8_t LINUX = 0x8;
 
 struct UnicodeKeyActions {
     char16_t arr[6] = {};
@@ -56,29 +57,32 @@ struct KeyAction {
         Lambda
     } tag;
 
+    const char* help = nullptr;
+
     constexpr KeyAction(): tag{Nothing}, lambda{nullptr} {}
     constexpr bool isNothing() const { return tag == Nothing; }
 };
 constexpr KeyAction KA_Nothing() {
     return KeyAction();
 }
-constexpr KeyAction KA_KeyWithModifier(KeyWithModifier val) {
+constexpr KeyAction KA_KeyWithModifier(KeyWithModifier val, const char* help = nullptr) {
     KeyAction x;
     x.keyboardKeyWithModifier = val; x.tag = KeyAction::KeyboardKeyWithModifier;
+    x.help = help;
     return x;
 
     //return KeyAction { .keyboardKey = val, .tag = KeyAction::KeyboardKey };
 }
-constexpr KeyAction KA_MediaKey(uint16_t val) {
+constexpr KeyAction KA_MediaKey(uint16_t val, const char* help = nullptr) {
     KeyAction x;
-    x.mediaKey = val; x.tag = KeyAction::MediaKey;
+    x.mediaKey = val; x.tag = KeyAction::MediaKey; x.help = help;
     return x;
 
 //    return KeyAction { .mediaKey = val, .tag = KeyAction::MediaKey };
 }
-constexpr KeyAction KA_Lambda(void (*val)(KeyboardStateMachine&)) {
+constexpr KeyAction KA_Lambda(void (*val)(KeyboardStateMachine&), const char* help = nullptr) {
     KeyAction x;
-    x.lambda = val; x.tag = KeyAction::Lambda;
+    x.lambda = val; x.tag = KeyAction::Lambda; x.help = help;
     return x;
     //return KeyAction { .lambda = val, .tag = KeyAction::Lambda };
 }
@@ -203,47 +207,50 @@ constexpr std::array<UnicodeKeyActions, 0x39> unicodeKeyActions = ([]() {
 })();
 
 
-constexpr std::array<std::array<KeyAction, 0x8>, 0x39> winKeyActions = ([]() {
-    std::array<std::array<KeyAction, 0x8>, 0x39> res;
+constexpr std::array<std::array<KeyAction, 0x16>, 0x39> winKeyActions = ([]() {
+    std::array<std::array<KeyAction, 0x16>, 0x39> res;
 
     constexpr uint8_t KM_WIN   = KEYBOARD_MODIFIER_LEFTGUI;
     constexpr uint8_t KM_CTRL  = KEYBOARD_MODIFIER_LEFTCTRL;
     constexpr uint8_t KM_ALT   = KEYBOARD_MODIFIER_LEFTALT;
     constexpr uint8_t KM_SHIFT = KEYBOARD_MODIFIER_LEFTSHIFT;
 
-    res[HID_KEY_R][SHIFT|CTRL] = KA_Lambda([](KeyboardStateMachine&) {
-        reset_usb_boot(0,0);
-    });
+    // res[HID_KEY_R][SHIFT|CTRL] = KA_Lambda([](KeyboardStateMachine&) {
+    //     reset_usb_boot(0,0);
+    // });
     // res[HID_KEY_R][SHIFT|ALT] = KA_Lambda([](KeyboardStateMachine&) {
     //     watchdog_reboot(0,0,0);
     // });
     res[HID_KEY_R][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
         sm.toggleRuskiMode();
+    }, "RuskiMode");
+    res[HID_KEY_R][LINUX] = KA_Lambda([] (KeyboardStateMachine& sm) {
+        sm.toggleRuskiMode();
     });
 
     //alt tab
-    res[HID_KEY_O][0] = KA_KeyWithModifier({KM_ALT, HID_KEY_TAB});
+    res[HID_KEY_O][0] = KA_KeyWithModifier({KM_ALT, HID_KEY_TAB}, "AltTab");
 
-    res[HID_KEY_P][0]    = KA_MediaKey(HID_USAGE_CONSUMER_PLAY_PAUSE);
-    res[HID_KEY_P][CTRL] = KA_KeyWithModifier({0, HID_KEY_PRINT_SCREEN});
-    res[HID_KEY_P][ALT]  = KA_KeyWithModifier({KM_WIN|KM_SHIFT, HID_KEY_S});
+    res[HID_KEY_P][0]    = KA_MediaKey(HID_USAGE_CONSUMER_PLAY_PAUSE, "Play");
+    res[HID_KEY_P][CTRL] = KA_KeyWithModifier({0, HID_KEY_PRINT_SCREEN}, "PrScr");
+    res[HID_KEY_P][ALT]  = KA_KeyWithModifier({KM_WIN|KM_SHIFT, HID_KEY_S}, "Win+S");
 
     
-    res[HID_KEY_Z][0]    = KA_MediaKey(HID_USAGE_CONSUMER_SCAN_PREVIOUS);
-    res[HID_KEY_X][0]    = KA_MediaKey(HID_USAGE_CONSUMER_SCAN_NEXT);
+    res[HID_KEY_Z][0]    = KA_MediaKey(HID_USAGE_CONSUMER_SCAN_PREVIOUS, "Prev");
+    res[HID_KEY_X][0]    = KA_MediaKey(HID_USAGE_CONSUMER_SCAN_NEXT, "Next");
 
     //press windows key by its own
-    res[HID_KEY_X][CTRL] = KA_KeyWithModifier({KM_WIN, 0});
-    res[HID_KEY_X][ALT] = KA_KeyWithModifier({KM_WIN, 0});
+    res[HID_KEY_X][CTRL] = KA_KeyWithModifier({KM_WIN, 0}, "Win");
+    res[HID_KEY_X][ALT] = KA_KeyWithModifier({KM_WIN, 0}, "Win");
 
-    res[HID_KEY_C][ALT] = KA_KeyWithModifier({0, HID_KEY_CAPS_LOCK});
-    res[HID_KEY_N][ALT] = KA_KeyWithModifier({0, HID_KEY_NUM_LOCK});
+    res[HID_KEY_C][ALT] = KA_KeyWithModifier({0, HID_KEY_CAPS_LOCK}, "Caps");
+    res[HID_KEY_N][ALT] = KA_KeyWithModifier({0, HID_KEY_NUM_LOCK}, "NumL");
 
 
-    res[HID_KEY_M][CTRL] = KA_MediaKey(HID_USAGE_CONSUMER_MUTE);
+    res[HID_KEY_M][CTRL] = KA_MediaKey(HID_USAGE_CONSUMER_MUTE, "Mute");
 
-    res[HID_KEY_BRACKET_LEFT][0]  = KA_MediaKey(HID_USAGE_CONSUMER_REWIND);
-    res[HID_KEY_BRACKET_RIGHT][0] = KA_MediaKey(HID_USAGE_CONSUMER_FAST_FORWARD);
+    res[HID_KEY_BRACKET_LEFT][0]  = KA_MediaKey(HID_USAGE_CONSUMER_REWIND, "Rewind");
+    res[HID_KEY_BRACKET_RIGHT][0] = KA_MediaKey(HID_USAGE_CONSUMER_FAST_FORWARD, "FastFwd");
 
     res[HID_KEY_SEMICOLON][0]   = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_DECREMENT);
     res[HID_KEY_APOSTROPHE][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_INCREMENT);
@@ -251,12 +258,12 @@ constexpr std::array<std::array<KeyAction, 0x8>, 0x39> winKeyActions = ([]() {
     res[HID_KEY_COMMA][0]   = KA_MediaKey(HID_USAGE_CONSUMER_BRIGHTNESS_DECREMENT);
     res[HID_KEY_PERIOD][0]  = KA_MediaKey(HID_USAGE_CONSUMER_BRIGHTNESS_INCREMENT);
 
-    //COMMA, PERIOD, SLASH
+    //COMMA, PERIOD, SLASH  
     
     //super-alt-k is already mute microphone
 
     //alt tab
-    res[HID_KEY_SPACE][0] = KA_KeyWithModifier({KEYBOARD_MODIFIER_LEFTALT, HID_KEY_TAB});
+    res[HID_KEY_SPACE][0] = KA_KeyWithModifier({KEYBOARD_MODIFIER_LEFTALT, HID_KEY_TAB}, "AltTab");
 
     return res;
 })();

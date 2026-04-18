@@ -35,6 +35,7 @@ void onKbdLedRequest(uint8_t state);
 
 //}
 
+
 //a singleton class is used here because i don't have to forward declare everything
 class UsbHid {
     FixedVector<KeyWithModifier, 512/*256*/> sequence_buffer;
@@ -43,8 +44,14 @@ class UsbHid {
     BitArray<0x63/*0x82*/> keys;
     bool sendingConsumerKey = false;
     //uint8_t keys[KeyReportLength];
+    
+    // bool suspended = false;
 
     UsbHid() {}
+
+    friend void tud_suspend_cb(bool remote_wakeup_en);
+    friend void tud_resume_cb(void);
+
 
 public:
     static UsbHid& getInstance(){
@@ -54,7 +61,11 @@ public:
     UsbHid(const UsbHid&) = delete;
     UsbHid& operator=(const UsbHid&) = delete;
 
-
+private:
+    bool usbHidWorks() const {
+        return tud_mounted() && tud_hid_ready(); 
+    }
+public:
     void init() {
         board_init();
         tud_init(BOARD_TUD_RHPORT);
@@ -116,11 +127,30 @@ public:
     bool sendSequence(const KeyWithModifier* seq, size_t len) {
         auto res = sequence_buffer.push_n(seq, len);
         if (!res) return res;
-        sendReportFromSequence();
-        
+        if (sequence_buffer.empty())
+            sendReportFromSequence();
+            
         return true;
     }
-    bool sendUnicodeSequence(char16_t val, bool windowsMode) {
+private:
+    // template <bool useKeypad>
+    uint8_t hexDigitToKey(char c, bool useKeypad) {
+        //no real error handling, we just call it from below where we know we only get 0-9, A-F
+        if (c >= '1' && c <= '9') {
+            uint8_t key1 = useKeypad? HID_KEY_KEYPAD_1 : HID_KEY_1;
+            return uint8_t(key1-1+c-'0');
+        }
+
+        if (c== '0') {
+            return useKeypad? HID_KEY_KEYPAD_0: HID_KEY_0;
+        }
+        if (c >= 'A' && c <= 'F') {
+            return HID_KEY_A + (c-'A');
+        }
+        return 0;
+    }
+public:
+    bool sendUnicodeSequence(char16_t val, UnicodeInputMode mode) {
         Display::printf("U+%04x;%d\n", val, sequence_buffer.size());
         //unicode is 21 bits -> 0x10FFFF max -> 7 digits
         //32 bits -> 10 digits
@@ -131,57 +161,59 @@ public:
         FixedVector<KeyWithModifier, 16> keys;
         //KeyWithModifier keys[16];
 
+        snprintf(buff, sizeof(buff), "%04X", val);
 
-        //in windows mode, send alt + numbers on keypad (in hex)
-        //else send shift_ctrl_u <hex>
-        if (windowsMode) {
-            snprintf(buff, sizeof(buff), "%04X", val);
+        static_assert(UIM__Size == 3);
 
-            //snprintf(buff, sizeof(buff), "%d", val);
-            keys.push_back({KEYBOARD_MODIFIER_RIGHTALT, HID_KEY_KEYPAD_ADD});
-            for (const char* p = buff; *p; ++p) {
-                char c = *p;
-                uint8_t key;
-                if (c >= '1' && c <= '9') {
-                    key = uint8_t(HID_KEY_KEYPAD_1-1+c-'0');
-                } else if (c=='0') {
-                    key = HID_KEY_KEYPAD_0;
-                } else if (c >= 'A' && c <= 'F'){
-                    key = HID_KEY_A + (c-'A');
-                } else {
-                    continue;
+        switch (mode) {
+            case UIM_WinCompose:
+                keys.push_back({KEYBOARD_MODIFIER_RIGHTALT, 0});
+                keys.push_back({0, HID_KEY_U});
+
+                //yes i could refactor this bit, but i think it's less readable
+                 for (const char* p = buff; *p; ++p) {
+                    char c = *p;
+                    uint8_t key = hexDigitToKey(c, /*useKeypad*/ false);
+                    keys.push_back({0, key});
+                    if (*(p+1) == c)
+                        keys.push_back({0, 0});
                 }
-                keys.push_back({KEYBOARD_MODIFIER_RIGHTALT, key});
-                if (*(p+1) == c)
-                    keys.push_back({KEYBOARD_MODIFIER_RIGHTALT, 0});
+            
+                keys.push_back({0, HID_KEY_ENTER});
+                break;
+            case UIM_WinNumpad: {
+                keys.push_back({KEYBOARD_MODIFIER_RIGHTALT, HID_KEY_KEYPAD_ADD});
 
-            }
-        } else {
-            snprintf(buff, sizeof(buff), "%04X", val);
-            keys.push_back({KEYBOARD_MODIFIER_LEFTCTRL|KEYBOARD_MODIFIER_LEFTSHIFT, 
-                HID_KEY_U});
-            for (const char* p = buff; *p; ++p) {
-                char c = *p;
-                uint8_t key;
-                if (c >= '1' && c <= '9') {
-                    key = uint8_t(HID_KEY_1-1+c-'0');
-                } else if (c=='0') {
-                    key = HID_KEY_0;
-                } else if (c >= 'A' && c <= 'F'){
-                    key = HID_KEY_A + (c-'A');
-                } else {
-                    continue;
+                for (const char* p = buff; *p; ++p) {
+                    char c = *p;
+                    uint8_t key = hexDigitToKey(c, /*useKeypad*/ true);
+                    keys.push_back({KEYBOARD_MODIFIER_RIGHTALT, key});
+                    if (*(p+1) == c)
+                        keys.push_back({KEYBOARD_MODIFIER_RIGHTALT, 0});
                 }
-                keys.push_back({0, key});
-                if (*(p+1) == c)
-                    keys.push_back({0,0});
-            }
-            keys.push_back({0, HID_KEY_ENTER});
+            } break;
+            case UIM_Linux: {
+                keys.push_back({KEYBOARD_MODIFIER_LEFTCTRL|KEYBOARD_MODIFIER_LEFTSHIFT, HID_KEY_U});
+                
+                for (const char* p = buff; *p; ++p) {
+                    char c = *p;
+                    uint8_t key = hexDigitToKey(c, /*useKeypad*/ false);
+                    keys.push_back({0, key});
+                    if (*(p+1) == c)
+                        keys.push_back({0, 0});
+                }
+
+                keys.push_back({0, HID_KEY_ENTER});
+            } break;
+    
         }
+        
         keys.push_back({0, 0});
         return sendSequence(keys.begin(), keys.size());
     }
-    int seq_buffer_size() const {
+
+    //for debuggin reasons
+    size_t seq_buffer_size() const {
         return sequence_buffer.size();
     }
     
@@ -212,6 +244,8 @@ private:
         sendReport(x.modifiers, keys);
     }
     void sendReport(uint8_t modifiers, const uint8_t* keys) const {
+        if (!usbHidWorks()) return;
+
         #if 0
         Display::printf(
             "%c%c%c%c_%c%c%c%c\n"
@@ -230,6 +264,7 @@ private:
             keys[3], keys[4], keys[5]
         );
         #endif
+        
         tud_hid_keyboard_report(REPORT_ID_KEYBOARD, modifiers, keys);
     }
 public:
@@ -478,6 +513,15 @@ public:
             }
         }
     }
+public:
+//     void tud_mount_cb(void) {
+//         this->usbWorks = true;
+//     // USB connected and configured
+// }
+// void tud_umount_cb(void) {
+//     this->usbWorks = true;
+//     // USB disconnected
+// }
 
 
 };

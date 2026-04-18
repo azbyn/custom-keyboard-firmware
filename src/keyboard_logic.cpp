@@ -6,3 +6,9 @@ void onKeypress(KeyPosition pos, KeyState state) {
 void onKbdLedRequest(uint8_t state) {
     KeyboardLogic::getInstance().onKbdLedRequest(state);
 }
+void KeyboardStateMachine::forceRedraw() {
+    Display::getInstance().forceRedraw();
+}
+// bool  KeyboardStateMachine::usbHidWorks() const {
+//     return UsbHid::getInstance().usbHidWorks();
+// }

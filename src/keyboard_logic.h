@@ -12,6 +12,8 @@
 #include "button.h"
 #include "rotary_encoder.h"
 
+#include "settings_navigator.h"
+
 class KeyboardLogic {
     Button encoderBtn = Button(pins::encoder_push);
     RotaryEncoder encoder = RotaryEncoder(pins::encoder_A, pins::encoder_B);
@@ -19,11 +21,17 @@ class KeyboardLogic {
 
     KeyboardStateMachine& stateMachine;
     UsbHid& hid;
+    SettingsNavigator& settingsNavigator;
     bool pressedWinCombo = false;
+
+    //win key stuff
+    bool pressingLWin = false;
+    bool pressingRWin = false;
 
     KeyboardLogic()
         : stateMachine(KeyboardStateMachine::getInstance()),
-          hid(UsbHid::getInstance()) {}
+          hid(UsbHid::getInstance()),
+          settingsNavigator(SettingsNavigator::getInstance()) {}
 //public:
 //private:
     
@@ -34,52 +42,74 @@ public:
     }
     KeyboardLogic(const KeyboardLogic&) = delete;
     KeyboardLogic& operator=(const KeyboardLogic&) = default;
-    
     void init() {
         encoder.init();
         encoderBtn.init();
         bumperBtn.init();
         stateMachine.init();
 
-        if (!stateMachine.autoNoCaps) return;
+        if (!stateMachine.getAutoCapsMode()) return;
 
         // might not be needed, i think we get the request to set the leds on startup regardless
-        KeyWithModifier seq[] = {
-            {0, HID_KEY_NUM_LOCK},//HID_KEY_SCROLL_LOCK},
-            {0, 0},
-        };
-        hid.sendSequence(seq, sizeof(seq)/sizeof(seq[0]));
+        // KeyWithModifier seq[] = {
+        //     {0, HID_KEY_NUM_LOCK},//HID_KEY_SCROLL_LOCK},
+        //     {0, 0},
+        // };
+        // hid.sendSequence(seq, sizeof(seq)/sizeof(seq[0]));
     }
+
     void update() {
         stateMachine.update();
 
         int encVal = encoder.update();
-        if (encVal < 0) {
-            hid.pressMedia(HID_USAGE_CONSUMER_VOLUME_DECREMENT);
-            // watchdog_reboot(0,0,0);
+        bool encDown = encoderBtn.isDown();
+        
+        switch (stateMachine.getDisplayState()) {
+        case DS_Debug:
+            if (encVal < 0) {
+                Display::getInstance().cls();
+            } 
+            if (encDown) 
+                stateMachine.setDisplayState(DS_Menu);
+            break;
+        case DS_Menu:
+            if (encVal < 0) {
+                settingsNavigator.up();
+            } else if (encVal > 0) {
+                settingsNavigator.down();
+            }
+            if (encDown) 
+                reset_usb_boot(0,0);
 
-            // display.print("e-");
+            // settingsNavigator.right();
 
-            // printf("Enc -\n");
-        } else if (encVal > 0) {
-            hid.pressMedia(HID_USAGE_CONSUMER_VOLUME_INCREMENT);
-            // Display::getInstance().cls();
-            // printf("Enc +\n");
-        }
+            break;
+        default:
+            if (encVal < 0) {
+                hid.pressMedia(HID_USAGE_CONSUMER_VOLUME_DECREMENT);
+            } else if (encVal > 0) {
+                hid.pressMedia(HID_USAGE_CONSUMER_VOLUME_INCREMENT);
+            } 
+            if (encDown) 
+                reset_usb_boot(0,0);
 
-        if (encoderBtn.isDown()) {
-            // printf("Enc Btn\n");
-            reset_usb_boot(0,0);
-        }
+            break;
+        };
+           
         if (bumperBtn.isDown()) {
             watchdog_reboot(0,0,0);
             // printf("bumper\n");
         }
     }
     void onKbdLedRequest(uint8_t state) {
-        stateMachine.setComposeMode(state & KEYBOARD_LED_COMPOSE);
-        Display::printf("LED %02x\n", state);
-        if (!stateMachine.autoNoCaps) return;
+        stateMachine.updateKeyboardLeds(
+            { .numlock = (state & KEYBOARD_LED_NUMLOCK) != 0,
+              .capslock = (state & KEYBOARD_LED_CAPSLOCK) != 0,
+              .scrollock = (state & KEYBOARD_LED_SCROLLLOCK) != 0,
+              .compose = (state & KEYBOARD_LED_COMPOSE) != 0});
+
+        // Display::printf("LED %02x\n", state);
+        if (!stateMachine.getAutoCapsMode()) return;
 
         FixedVector<KeyWithModifier, 4> keys;
         //enable num lock if disabled
@@ -97,6 +127,7 @@ public:
     }
 
     void onKeypress(KeyPosition pos, KeyState state) {
+        stateMachine.onKeypress(state);
         // gpio_put(pins::leds[1], state);
         // return;
 
@@ -125,6 +156,53 @@ public:
 private:
     // return true if handled here
     bool handleSpecialKeypress(KeyPosition pos, KeyState state, uint8_t key) { 
+        if (stateMachine.getDisplayState() == DS_Menu) {
+            switch (key) {
+            case HID_KEY_ESCAPE: 
+            case HID_KEY_WILDCARD:
+                if (state) settingsNavigator.exit();
+                break;
+
+            case HID_KEY_ARROW_LEFT:
+                if (state) settingsNavigator.left();
+                break;
+
+            case HID_KEY_ENTER:
+            case HID_KEY_KEYPAD_ENTER:
+            case HID_KEY_ARROW_RIGHT:
+                if (state) settingsNavigator.right();
+                break;
+
+            case HID_KEY_ARROW_UP:
+                if (state) settingsNavigator.up();
+                break;
+
+            case HID_KEY_ARROW_DOWN:
+                if (state) settingsNavigator.down();
+                break;
+                
+            //so the keys don't get stuck:
+            case HID_KEY_LCTRL: hid.setModifierState(KEYBOARD_MODIFIER_LEFTCTRL, state); return true;
+            case HID_KEY_LALT: hid.setModifierState(KEYBOARD_MODIFIER_LEFTALT, state); return true;
+            case HID_KEY_SHIFT_LEFT: hid.setModifierState(KEYBOARD_MODIFIER_LEFTSHIFT, state); return true;
+            case HID_KEY_RCTRL: hid.setModifierState(KEYBOARD_MODIFIER_RIGHTCTRL, state); return true;
+            case HID_KEY_SHIFT_RIGHT: hid.setModifierState(KEYBOARD_MODIFIER_RIGHTSHIFT, state); return true;
+
+            case HID_KEY_GUI_LEFT: 
+                this->pressingLWin = state;
+                pressedWinCombo = false;
+                break;
+
+            case HID_KEY_GUI_RIGHT:
+                this->pressingRWin = state; 
+                pressedWinCombo = false;
+                break;
+            case HID_KEY_RALT:
+                stateMachine.raltMode = state;
+                break;
+            }
+            return true;
+        }
         auto& hid = UsbHid::getInstance();
         auto& disp = Display::getInstance();
 
@@ -136,18 +214,18 @@ private:
         case HID_KEY_SHIFT_RIGHT: hid.setModifierState(KEYBOARD_MODIFIER_RIGHTSHIFT, state); return true;
 
         case HID_KEY_GUI_LEFT: 
-            disp.printf("LWIN %d;%d-%d; %d\n", state, 
-                !!(hid.getModifiers() & KEYBOARD_MODIFIER_LEFTGUI),
-                !!(hid.getModifiers() & KEYBOARD_MODIFIER_RIGHTGUI),
-            pressedWinCombo);
+            // disp.printf("LWIN %d;%d-%d; %d\n", state, 
+            //     !!(hid.getModifiers() & KEYBOARD_MODIFIER_LEFTGUI),
+            //     !!(hid.getModifiers() & KEYBOARD_MODIFIER_RIGHTGUI),
+            //     pressedWinCombo);
 
-            stateMachine.pressingLWin = state;
+            this->pressingLWin = state;
 
             // we pressed some key combo with action none
             if (!state && (hid.getModifiers() & KEYBOARD_MODIFIER_LEFTGUI)) {
                 hid.setModifierState(KEYBOARD_MODIFIER_LEFTGUI, false);
             }
-            if (!stateMachine.pressingLWin && !stateMachine.pressingRWin) {
+            if (!this->pressingLWin && !this->pressingRWin) {
                 if (!pressedWinCombo) {
                     //if just pressed the win key, send a quick burst of win key
                     KeyWithModifier seq[2] = {
@@ -162,11 +240,11 @@ private:
             return true;
             //hid.setModifierState(KEYBOARD_MODIFIER_LEFTGUI, state); return true;
         case HID_KEY_GUI_RIGHT:
-            stateMachine.pressingRWin = state; 
+            this->pressingRWin = state; 
             if (!state && (hid.getModifiers() & KEYBOARD_MODIFIER_RIGHTGUI))
                 hid.setModifierState(KEYBOARD_MODIFIER_RIGHTGUI, false);
 
-            if (!stateMachine.pressingLWin && !stateMachine.pressingRWin) {
+            if (!this->pressingLWin && !this->pressingRWin) {
                 if (!pressedWinCombo) {
                     //if just pressed the win key, send a quick burst of win key
                     KeyWithModifier seq[2] = {
@@ -186,13 +264,17 @@ private:
             stateMachine.raltMode = (state == KeyState::PRESSED);
             return true;
         case HID_KEY_WILDCARD:
+            if (this->pressingLWin || this->pressingRWin) {
+                stateMachine.setDisplayState(DS_Menu);
+                return true;
+            }
             hid.setModifierState(KEYBOARD_MODIFIER_RIGHTALT, state); 
             return true;
             
         default: break;
         }
 
-        if (stateMachine.pressingLWin || stateMachine.pressingRWin) {
+        if (this->pressingLWin || this->pressingRWin) {
             pressedWinCombo = true;
             uint8_t modifiers = 0;
             if (hid.getCtrlState()) 
@@ -201,14 +283,16 @@ private:
                 modifiers |= key_layout_definitions::ALT;
             if (hid.getShiftState()) 
                 modifiers |= key_layout_definitions::SHIFT;
-            
+            if (stateMachine.getUnicodeInputMode() == UIM_Linux)
+                modifiers |= key_layout_definitions::LINUX;
+
             using KeyAction = key_layout_definitions::KeyAction;
             KeyAction a = KeyAction();
             if (key < key_layout_definitions::winKeyActions.size())
                 a = key_layout_definitions::winKeyActions[key][modifiers];
             if (a.isNothing()) {
                 if (state) {
-                    auto mod =  stateMachine.pressingLWin?KEYBOARD_MODIFIER_LEFTGUI:KEYBOARD_MODIFIER_RIGHTGUI;
+                    auto mod =  this->pressingLWin?KEYBOARD_MODIFIER_LEFTGUI:KEYBOARD_MODIFIER_RIGHTGUI;
                     KeyWithModifier seq[2] = {
                         {mod, key},
                         {0, 0}
@@ -282,7 +366,8 @@ private:
 
             // only send on push
             if (state) {
-                hid.sendUnicodeSequence(val, stateMachine.windowsMode);
+
+                hid.sendUnicodeSequence(val, stateMachine.getUnicodeInputMode());
                 // hid.sendUnicodeSequence(u'0', stateMachine.windowsMode);
 
             }

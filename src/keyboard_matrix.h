@@ -3,6 +3,7 @@
 #include "pins.h"
 #include "utils.h"
 
+constexpr int DebounceTimeMs = 3;
 
 
 enum KeyState {
@@ -24,6 +25,9 @@ void onKeypress(KeyPosition pos, KeyState state);
 class KeyboardMatrix {
 private:
     bool prevState[pins::rowLen * pins::colLen] = {};
+    //more debounce to the ounce
+    uint32_t prevKeyTimes[pins::rowLen * pins::colLen] = {};
+
     KeyboardMatrix() {}
 
 public:
@@ -139,25 +143,23 @@ public:
 
         //check what changed
         bool has_update = false;
+        uint32_t timeNow = millis();
         for (int c = 0; c < colLen; ++c) {
             for (int r = 0; r < rowLen; ++r) {
                 auto i = c * rowLen + r;
                 auto prev = prevState[i];
                 auto now  = newState[i];
 
-
-                if (prev != now) {
+                if (prev != now && timeNow >= prevKeyTimes[i] + DebounceTimeMs) {
                     has_update = true;
+                    prevKeyTimes[i] = timeNow;
                     onKeypress({.col=c, .row=r}, now ? PRESSED : RELEASED);
+                    prevState[i] = newState[i];
                 }
-                prevState[i] = newState[i];
             }
         }
         if (has_update) {
            print_state(newState);
         }
-    }
-
-
-  
+    }  
 };

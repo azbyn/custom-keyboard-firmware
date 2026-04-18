@@ -67,7 +67,6 @@ constexpr uint8_t desc_hid_report[] =
   HID_COLLECTION ( HID_COLLECTION_APPLICATION )                    ,
     /* Report ID  */
      HID_REPORT_ID(REPORT_ID_KEYBOARD         )
-    //__VA_ARGS__ 
     /* 8 bits Modifier Keys (Shift, Control, Alt) */ 
     HID_USAGE_PAGE ( HID_USAGE_PAGE_KEYBOARD )                     ,
       HID_USAGE_MIN    ( 224                                    )  ,
@@ -84,13 +83,13 @@ constexpr uint8_t desc_hid_report[] =
     /* Output 5-bit LED Indicator Kana | Compose | ScrollLock | CapsLock | NumLock */ 
     HID_USAGE_PAGE  ( HID_USAGE_PAGE_LED                   )       ,
       HID_USAGE_MIN    ( 1                                       ) ,
-      HID_USAGE_MAX    ( /*5*/4                                       ) ,
-      HID_REPORT_COUNT ( /*5*/4                                       ) ,
+      HID_USAGE_MAX    ( 4                                       ) ,
+      HID_REPORT_COUNT ( 4                                       ) ,
       HID_REPORT_SIZE  ( 1                                       ) ,
       HID_OUTPUT       ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ) ,
       /* led padding */ 
       HID_REPORT_COUNT ( 1                                       ) ,
-      HID_REPORT_SIZE  ( 5                                       ) ,
+      HID_REPORT_SIZE  ( 4                                       ) ,
       HID_OUTPUT       ( HID_CONSTANT                            ) ,
     /* 6-byte Keycodes */ 
     HID_USAGE_PAGE ( HID_USAGE_PAGE_KEYBOARD )                     ,
@@ -101,8 +100,8 @@ constexpr uint8_t desc_hid_report[] =
       HID_REPORT_COUNT ( KeyReportLength /*6*/               )     ,
       HID_REPORT_SIZE  ( KeyReportLength +2 /*8*/            )     ,
       HID_INPUT        ( HID_DATA | HID_ARRAY | HID_ABSOLUTE )     ,
-  HID_COLLECTION_END ,
-  TUD_HID_REPORT_DESC_CONSUMER( HID_REPORT_ID(REPORT_ID_CONSUMER_CONTROL )),
+    HID_COLLECTION_END ,
+    TUD_HID_REPORT_DESC_CONSUMER( HID_REPORT_ID(REPORT_ID_CONSUMER_CONTROL )),
 
   //TUD_HID_REPORT_DESC_KEYBOARD( HID_REPORT_ID(REPORT_ID_KEYBOARD         )),
   /*TUD_HID_REPORT_DESC_MOUSE   ( HID_REPORT_ID(REPORT_ID_MOUSE            )),
@@ -263,7 +262,29 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 
   return _desc_str;
 }
+void tud_mount_cb(void) {
+  KeyboardStateMachine::getInstance().onUsbMount(true);
+  // KeyboardStateMachine::getInstance().onUsbSuspendMode(false);
 
+  Display::printf("mount");
+}
+void tud_umount_cb(void) {
+  KeyboardStateMachine::getInstance().onUsbMount(false);
+  Display::printf("unmount");
+}
+void tud_suspend_cb(bool remote_wakeup_en) {
+  KeyboardStateMachine::getInstance().onUsbSuspendMode(true);
+  Display::printf("SUSP");
+    // USB suspended
+}
+void tud_resume_cb(void) {
+  KeyboardStateMachine::getInstance().onUsbSuspendMode(false);
+  Display::printf("RESUME");
+
+    // KeyboardStateMachine::setDisplayState(DS_OFF);
+
+    // USB resumed
+}
 
 #if 0
 //--------------------------------------------------------------------+

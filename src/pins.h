@@ -76,7 +76,7 @@ namespace wifi {
 // 40/28 SPI1 RX
 
 constexpr Pin ce  = 35;
-constexpr Pin cs  = 36;
+// constexpr Pin cs  = 36;
 constexpr Pin miso = 28;
 constexpr Pin mosi = 47;
 constexpr Pin clk  = 46;
