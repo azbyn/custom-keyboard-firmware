@@ -1,21 +1,24 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
+#include <array>
 
 template<typename T, size_t Size>
 class FixedVector {
-    T _data[Size];
+    std::array<T, Size> _data;//[Size];
     size_t _len;
 
 public:
-    FixedVector(): _len{0}, _data{0} {}
+    constexpr FixedVector(): _len{0}, _data{0} {}
     //i could make an initialiser list constructor but i don't need to use it so i won't
 
-    const T* begin() const noexcept { return _data; }
-    const T* end() const noexcept { return _data + _len; }
+    constexpr const auto& array() const noexcept { return _data; }
 
-    size_t size() const { return _len; }
-    bool empty() const { return _len == 0; }
+    constexpr const T* begin() const noexcept { return _data.begin(); }
+    constexpr const T* end() const noexcept { return _data.begin() + _len; }
+
+    constexpr size_t size() const { return _len; }
+    constexpr bool empty() const { return _len == 0; }
 
     T& operator[](size_t i) { return _data[i]; }
     const T& operator[](size_t i) const { return _data[i]; }
@@ -34,7 +37,7 @@ public:
     /// @param ptr 
     /// @param len 
     /// @return if no space is left, return false
-    bool push_n(const T* ptr, size_t len) {
+    constexpr bool push_n(const T* ptr, size_t len) {
         if (_len + len >= Size) return false;
 
         for (auto i = 0; i < len; ++i) {
@@ -42,7 +45,8 @@ public:
         }
         _len += len;
         return true;
-    } 
+    }
+    
 
     /// @brief 
     /// @return returns the default T object if no elements are present

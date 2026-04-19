@@ -20,7 +20,10 @@
 #include "mode_displays/debug_msg_displayer.h"
 #include "mode_displays/normal_mode_displayer.h"
 #include "mode_displays/menu_mode_displayer.h"
+#include "mode_displays/show_bindings_mode_displayer.h"
 
+
+#include "utils.h"
 
 
 
@@ -36,6 +39,7 @@ class Display {
     DebugMsgDisplayer debugMsgDisplayer;
     NormalModeDisplayer normalModeDisplayer;
     MenuModeDisplayer menuModeDisplayer;
+    ShowBindingsModeDisplayer showBindingsModeDisplayer;
     //init as 1 so we get an update after init
     int dirtiness = 1;
 
@@ -93,8 +97,17 @@ public:
     static void printf(const char* fmt) {
         getInstance().print(fmt);
     }
+    void showKeybindingsUp() {
+        showBindingsModeDisplayer.up();
+        forceRedraw();
+    }
+     void showKeybindingsDown() {
+        showBindingsModeDisplayer.down();
+        forceRedraw();
+    }
 private:
-    
+    uint32_t startDimBlTime = 0;
+    bool prevSuspend = false;
     void draw() {
         int prevDirtiness = dirtiness;
 
@@ -102,9 +115,26 @@ private:
 
         // gpio_put(pins::ledMenu, stateSnapshot.usbSuspended);
         if (stateSnapshot.usbSuspended) {
-            this->lcd.fill_color(colors::blue);
+            if (!prevSuspend) {
+                startDimBlTime = millis() + 1000;
+                prevSuspend = true;
+            }
+            
+            if (startDimBlTime) {
+                if (millis() >= startDimBlTime) {
+                    startDimBlTime = 0;
+                    gpio_put(pins::disp::bl, false);
+                }
+            }
+            
+            // prevSuspend = stateSnapshot.usbSuspended;
+            // this->lcd.fill_color(colors::blue);
             //TODO again, add delay?
             return;
+        }
+        else if (prevSuspend) {
+            prevSuspend = false;
+            lcd.init();
         }
         if (!stateSnapshot.usbMounted) {
             this->lcd.fill_color(colors::black);
@@ -123,7 +153,9 @@ private:
             case DS_Debug: 
                 debugMsgDisplayer.draw(this->lcd, this->bufferMutex);
                 break;
-            case DS_Search: break;
+            case DS_ShowBindings:
+                showBindingsModeDisplayer.draw(this->lcd);
+                break;
         }
 
         mutex_enter_blocking(&bufferMutex);

@@ -18,7 +18,9 @@ enum DisplayState {
     DS_Normal,
     DS_Menu,
     DS_Debug,
-    DS_Search,
+    DS_ShowBindings,
+
+    DS__Size,
 };
 
 //anything in here should trigger a redraw if changed
@@ -32,7 +34,7 @@ struct KeyboardStateSnapshot {
     bool usbMounted = false;
 
     bool keyPressed = false;
-    DisplayState state = DS_Normal; 
+    DisplayState state = DS_ShowBindings;// DS_Normal; 
     
     //stats
     uint32_t secSinceBoot = 0;
@@ -78,8 +80,7 @@ public:
             gpio_set_dir(pin, true);
         }
     }
-private:
-public:
+//public:
     struct KeyboardLeds {
         //rather than remembering which arg is which, pass a struct
         bool numlock, capslock,scrollock, compose;

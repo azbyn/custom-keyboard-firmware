@@ -23,7 +23,7 @@ constexpr Pin scl = 18;//6
 constexpr Pin sda = 19;//5
 constexpr Pin dc  = 21;//4 //aka rs
 constexpr Pin rst = 22;//3
-constexpr int bl = -1;
+constexpr int bl = 35;
 spi_inst_t* const spiPtr = spi0;
 
 };
@@ -55,9 +55,9 @@ constexpr Pin encoder_B = 24;
 
 constexpr Pin bumper = 40;
 
-constexpr Pin ledRuski = 37;
-constexpr Pin ledCompose = 38;
-constexpr Pin ledMenu = 39;//idk what else to do with it yet
+constexpr Pin ledRuski = 38;
+constexpr Pin ledCompose = 39;
+constexpr Pin ledMenu = 37;//idk what else to do with it yet
 
 
 
@@ -75,9 +75,11 @@ namespace wifi {
 // 46 SPI1 CLK
 // 40/28 SPI1 RX
 
-constexpr Pin ce  = 35;
+// constexpr Pin ce  = 35;
 // constexpr Pin cs  = 36;
-constexpr Pin miso = 28;
+
+
+constexpr Pin miso = 28; 
 constexpr Pin mosi = 47;
 constexpr Pin clk  = 46;
 //constexpr Pin int = 22;

@@ -10,6 +10,10 @@
 #include "usb_hid.h"
 #include "keyboard_logic.h"
 
+void display_print(const char* fmt) {
+    Display::getInstance().print(fmt);
+}
+
 int main() {
     auto& keyboardMatrix = KeyboardMatrix::getInstance();
     auto& display = Display::getInstance();

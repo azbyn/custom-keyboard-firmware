@@ -31,8 +31,13 @@ public:
         gpio_init(pins::disp::rst);
         gpio_set_dir(pins::disp::rst, GPIO_OUT);
 
+        gpio_init(pins::disp::bl);
+        gpio_set_dir(pins::disp::bl, GPIO_OUT);
+
+
         // Init display
-        
+        gpio_put(pins::disp::bl, true);
+
         lcd_reset();
 
         lcd_write_cmd(0x01); // Software reset
@@ -65,6 +70,7 @@ public:
 
         lcd_write_cmd(0x29); // Display on
         sleep_ms(50);
+
     }
 private:
     void lcd_write_cmd(uint8_t cmd) {

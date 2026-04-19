@@ -2,6 +2,9 @@
 #include <pico/stdlib.h>
 #include <hardware/gpio.h>
 
+#include <utility> //std::forward
+#include <stdio.h> //snprintf
+
 #include "pins.h"
 
 constexpr bool HIGH = true;
@@ -39,6 +42,20 @@ inline void digitalWrite(Pin ulPin, bool value) {
 inline uint32_t millis() {
     return to_ms_since_boot(get_absolute_time());
 }
+
+//defined in main.cpp
+void display_print(const char* fmt);
+
+template <typename... Args>
+inline void display_printf(const char* fmt, Args&&... args) {
+    char buffer[256];
+    snprintf(buffer, sizeof(buffer), fmt, std::forward<Args>(args)...);
+    display_print(buffer);
+}
+inline void display_printf(const char* fmt) {
+    return display_print(fmt);
+}
+
 // inline bool digitalRead(Pin ulPin) {
 //     return gpio_get();
 // }

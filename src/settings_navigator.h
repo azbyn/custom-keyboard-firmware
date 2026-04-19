@@ -188,6 +188,15 @@ constexpr SettingItem back = {
     .getValName = &getValName
 };
 
+constexpr SettingItem keybindingsShow = {
+    .name = "Keybindings Show",
+    .move = [] (int x, KeyboardStateSnapshot& s) {
+        if (x > 0) s.state = DS_ShowBindings;
+    },
+    .getValName = &getValName
+};
+
+
 };
 
 class SettingsNavigator {
@@ -203,13 +212,15 @@ public:
     static constexpr const SettingItem* settingItems[] = {
         &UnicodeInputModeSetting::setting,
         &ShowBgSetting::setting,
-        &BrightnessSetting::setting,
+        // &BrightnessSetting::setting,
         &AutoNoCapsSetting::setting,
         &MusicNumSetting::setting,
         
         &MenuButtons::restart,
         &MenuButtons::bootloader,
         &MenuButtons::debug,
+        &MenuButtons::keybindingsShow,
+
         &MenuButtons::back,
     };
     constexpr uint8_t getCurrentSettingIdx() const {return currentSettingIdx;}

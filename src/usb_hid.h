@@ -11,8 +11,8 @@
 #include "fixed_vector.h"
 #include "bit_array.h"
 
-#include "display.hpp"
 #include "utils.h"
+#include "keyboard_state_machine.h"
 
 constexpr uint8_t BOARD_TUD_RHPORT = 0;
 constexpr uint8_t REPORT_ID_KEYBOARD = 1;
@@ -151,7 +151,7 @@ private:
     }
 public:
     bool sendUnicodeSequence(char16_t val, UnicodeInputMode mode) {
-        Display::printf("U+%04x;%d\n", val, sequence_buffer.size());
+        display_printf("U+%04x;%d\n", val, sequence_buffer.size());
         //unicode is 21 bits -> 0x10FFFF max -> 7 digits
         //32 bits -> 10 digits
         // if (val > 0x10FFFF) return false;
@@ -230,14 +230,16 @@ private:
         auto x = sequence_buffer.pop_front();
 
         // Display::printf("S%d-", sequence_buffer.size());
-        Display::printf("[", sequence_buffer.size());
+        #if 0
+        display_printf("[%d-", sequence_buffer.size());
 
         printKey(x);
         if (sequence_buffer.empty()) {
-            Display::printf("\n");
+            display_print("\n");
         } else {
-            Display::printf(";");
+            display_print(";");
         }
+        #endif
 
         keys[0] = x.key;
 
@@ -247,7 +249,7 @@ private:
         if (!usbHidWorks()) return;
 
         #if 0
-        Display::printf(
+        display_printf(
             "%c%c%c%c_%c%c%c%c\n"
             "%02x %02x %02x %02x %02x %02x\n",
             ((modifiers & KEYBOARD_MODIFIER_LEFTCTRL) ? 'c': '_'),
@@ -270,76 +272,77 @@ private:
 public:
     static void printKey(KeyWithModifier k) {
          if (k.modifiers & (KEYBOARD_MODIFIER_RIGHTGUI|KEYBOARD_MODIFIER_LEFTGUI))
-            Display::printf("G");
+            display_print("W");
         if (k.modifiers & (KEYBOARD_MODIFIER_RIGHTALT|KEYBOARD_MODIFIER_LEFTALT))
-            Display::printf("A");
+            display_print("A");
         if (k.modifiers & (KEYBOARD_MODIFIER_RIGHTCTRL|KEYBOARD_MODIFIER_LEFTCTRL))
-            Display::printf("C");
+            display_print("C");
         if (k.modifiers & (KEYBOARD_MODIFIER_RIGHTSHIFT|KEYBOARD_MODIFIER_LEFTSHIFT))
-            Display::printf("S");
+            display_print("S");
 
         printKey(k.key);
     }
 
-    static void printKey(uint8_t key) {
-        auto& d = Display::getInstance();
+    // static void keyToStr(char* dst, size_t sz, uint8_t key) {
+    static constexpr const char* maybeKeyToStr(uint8_t key) {
         switch (key) {
-        case HID_KEY_A: d.print("A"); break;
-        case HID_KEY_B: d.print("B"); break;
-        case HID_KEY_C: d.print("C"); break;
-        case HID_KEY_D: d.print("D"); break;
-        case HID_KEY_E: d.print("E"); break;
-        case HID_KEY_F: d.print("F"); break;
-        case HID_KEY_G: d.print("G"); break;
-        case HID_KEY_H: d.print("H"); break;
-        case HID_KEY_I: d.print("I"); break;
-        case HID_KEY_J: d.print("J"); break;
-        case HID_KEY_K: d.print("K"); break;
-        case HID_KEY_L: d.print("L"); break;
-        case HID_KEY_M: d.print("M"); break;
-        case HID_KEY_N: d.print("N"); break;
-        case HID_KEY_O: d.print("O"); break;
-        case HID_KEY_P: d.print("P"); break;
-        case HID_KEY_Q: d.print("Q"); break;
-        case HID_KEY_R: d.print("R"); break;
-        case HID_KEY_S: d.print("S"); break;
-        case HID_KEY_T: d.print("T"); break;
-        case HID_KEY_U: d.print("U"); break;
-        case HID_KEY_V: d.print("V"); break;
-        case HID_KEY_W: d.print("W"); break;
-        case HID_KEY_X: d.print("X"); break;
-        case HID_KEY_Y: d.print("Y"); break;
-        case HID_KEY_Z: d.print("Z"); break;
-        case HID_KEY_1: d.print("1"); break;
-        case HID_KEY_2: d.print("2"); break;
-        case HID_KEY_3: d.print("3"); break;
-        case HID_KEY_4: d.print("4"); break;
-        case HID_KEY_5: d.print("5"); break;
-        case HID_KEY_6: d.print("6"); break;
-        case HID_KEY_7: d.print("7"); break;
-        case HID_KEY_8: d.print("8"); break;
-        case HID_KEY_9: d.print("9"); break;
-        case HID_KEY_0: d.print("0"); break;
-        case HID_KEY_ENTER: d.print("RT"); break;
-        default: Display::printf("%02x", key); break;
+        case HID_KEY_A: return "A";
+        case HID_KEY_B: return "B";
+        case HID_KEY_C: return "C";
+        case HID_KEY_D: return "D";
+        case HID_KEY_E: return "E";
+        case HID_KEY_F: return "F";
+        case HID_KEY_G: return "G";
+        case HID_KEY_H: return "H";
+        case HID_KEY_I: return "I";
+        case HID_KEY_J: return "J";
+        case HID_KEY_K: return "K";
+        case HID_KEY_L: return "L";
+        case HID_KEY_M: return "M";
+        case HID_KEY_N: return "N";
+        case HID_KEY_O: return "O";
+        case HID_KEY_P: return "P";
+        case HID_KEY_Q: return "Q";
+        case HID_KEY_R: return "R";
+        case HID_KEY_S: return "S";
+        case HID_KEY_T: return "T";
+        case HID_KEY_U: return "U";
+        case HID_KEY_V: return "V";
+        case HID_KEY_W: return "W";
+        case HID_KEY_X: return "X";
+        case HID_KEY_Y: return "Y";
+        case HID_KEY_Z: return "Z";
+        case HID_KEY_1: return "1";
+        case HID_KEY_2: return "2";
+        case HID_KEY_3: return "3";
+        case HID_KEY_4: return "4";
+        case HID_KEY_5: return "5";
+        case HID_KEY_6: return "6";
+        case HID_KEY_7: return "7";
+        case HID_KEY_8: return "8";
+        case HID_KEY_9: return "9";
+        case HID_KEY_0: return "0";
+        case HID_KEY_ENTER:  return "Ent";
+        case HID_KEY_ESCAPE: return "Esc";
+        case HID_KEY_BACKSPACE: return "BS";
+        case HID_KEY_TAB: return "Tab";
+        case HID_KEY_SPACE: return "Spc";
+        case HID_KEY_MINUS: return "-";
+        case HID_KEY_EQUAL: return "=";
+        case HID_KEY_BRACKET_LEFT: return "[";
+        case HID_KEY_BRACKET_RIGHT: return "]";
+        case HID_KEY_BACKSLASH: return "\\";
+        case HID_KEY_EUROPE_1: return "Eur";
+        case HID_KEY_SEMICOLON: return ";";
+        case HID_KEY_APOSTROPHE: return "'";
+        case HID_KEY_GRAVE: return "`";
+        case HID_KEY_COMMA: return ",";
+        case HID_KEY_PERIOD: return ".";
+        case HID_KEY_SLASH: return "/";
+        case HID_KEY_CAPS_LOCK: return "Caps"; 
 
-// #define HID_KEY_ESCAPE                      0x29
-// #define HID_KEY_BACKSPACE                   0x2A
-// #define HID_KEY_TAB                         0x2B
-// #define HID_KEY_SPACE                       0x2C
-// #define HID_KEY_MINUS                       0x2D
-// #define HID_KEY_EQUAL                       0x2E
-// #define HID_KEY_BRACKET_LEFT                0x2F
-// #define HID_KEY_BRACKET_RIGHT               0x30
-// #define HID_KEY_BACKSLASH                   0x31
-// #define HID_KEY_EUROPE_1                    0x32
-// #define HID_KEY_SEMICOLON                   0x33
-// #define HID_KEY_APOSTROPHE                  0x34
-// #define HID_KEY_GRAVE                       0x35
-// #define HID_KEY_COMMA                       0x36
-// #define HID_KEY_PERIOD                      0x37
-// #define HID_KEY_SLASH                       0x38
-// #define HID_KEY_CAPS_LOCK                   0x39
+        default: return nullptr;
+
 // #define HID_KEY_F1                          0x3A
 // #define HID_KEY_F2                          0x3B
 // #define HID_KEY_F3                          0x3C
@@ -387,6 +390,15 @@ public:
 // #define HID_KEY_POWER                       0x66
 // #define HID_KEY_KEYPAD_EQUAL                0x67
         }
+    }
+
+    static void printKey(uint8_t key) {
+        const char* maybeKey = maybeKeyToStr(key);
+        if (!maybeKey)
+            display_printf("%02x", key);
+        else   
+            display_print(maybeKey);
+        // if (buffer) 
     }
 public:
     void sendReport() const {

@@ -79,10 +79,17 @@ public:
                 settingsNavigator.down();
             }
             if (encDown) 
-                reset_usb_boot(0,0);
+                settingsNavigator.right();
 
-            // settingsNavigator.right();
-
+            break;
+        case DS_ShowBindings:
+            if (encVal < 0) {
+                Display::getInstance().showKeybindingsUp();
+            } else if (encVal > 0) {
+                Display::getInstance().showKeybindingsDown();
+            }
+            if (encDown) 
+                stateMachine.setDisplayState(DS_Normal);
             break;
         default:
             if (encVal < 0) {
@@ -350,9 +357,6 @@ private:
             //if in ruski mode if you press ctrl+c it sends it
             if (hid.getCtrlState() || hid.getAltState())
                 return false;
-
-           
-
 
             auto val = unicodeKey.get(shiftMode, stateMachine.raltMode, stateMachine.getRuskiMode());
             if (state) {

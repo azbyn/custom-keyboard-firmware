@@ -130,7 +130,7 @@ constexpr std::array<UnicodeKeyActions, 0x39> unicodeKeyActions = ([]() {
     //x[2] = {},
     //x[3] = {},
     x[HID_KEY_Q] = {u'â', u'Â', u'я', u'Я', 0,    0};
-    x[HID_KEY_W] = {u'ß', u'ß', u'ѣ', u'Ѣ', u'ѫ', u'Ѫ'}; // yus/yat is here because i had free space
+    x[HID_KEY_W] = {u'ß', u'ß', u'ь', u'Ь', u'ѣ', u'Ѣ'}; // yus/yat is here because i had free space , u'ѫ', u'Ѫ'
     x[HID_KEY_E] = {u'ę', u'Ę', u'е', u'Е', u'э', u'Э'};
     x[HID_KEY_R] = {u'š', u'Š', u'р', u'Р', u'щ', u'Щ'};
     x[HID_KEY_T] = {u'ț', u'Ț', u'т', u'Т', u'ц', u'Ц'};
@@ -194,8 +194,8 @@ constexpr std::array<UnicodeKeyActions, 0x39> unicodeKeyActions = ([]() {
 })();
 
 
-constexpr std::array<std::array<KeyAction, 0x16>, 0x39> winKeyActions = ([]() {
-    std::array<std::array<KeyAction, 0x16>, 0x39> res;
+constexpr std::array<std::array<KeyAction, 0x10>, 0x39> winKeyActions = ([]() {
+    std::array<std::array<KeyAction, 0x10>, 0x39> res;
 
     constexpr uint8_t KM_WIN   = KEYBOARD_MODIFIER_LEFTGUI;
     constexpr uint8_t KM_CTRL  = KEYBOARD_MODIFIER_LEFTCTRL;
@@ -210,7 +210,7 @@ constexpr std::array<std::array<KeyAction, 0x16>, 0x39> winKeyActions = ([]() {
     // });
     res[HID_KEY_R][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
         sm.toggleRuskiMode();
-    }, "RuskiMode");
+    }, "Ruski");
     res[HID_KEY_R][LINUX] = KA_Lambda([] (KeyboardStateMachine& sm) {
         sm.toggleRuskiMode();
     });
@@ -246,14 +246,14 @@ constexpr std::array<std::array<KeyAction, 0x16>, 0x39> winKeyActions = ([]() {
 
     res[HID_KEY_M][CTRL] = KA_MediaKey(HID_USAGE_CONSUMER_MUTE, "Mute");
 
-    res[HID_KEY_BRACKET_LEFT][0]  = KA_MediaKey(HID_USAGE_CONSUMER_REWIND, "Rewind");
-    res[HID_KEY_BRACKET_RIGHT][0] = KA_MediaKey(HID_USAGE_CONSUMER_FAST_FORWARD, "FastFwd");
+    // res[HID_KEY_BRACKET_LEFT][0]  = KA_MediaKey(HID_USAGE_CONSUMER_REWIND, "Rewind");
+    // res[HID_KEY_BRACKET_RIGHT][0] = KA_MediaKey(HID_USAGE_CONSUMER_FAST_FORWARD, "FastFwd");
 
-    res[HID_KEY_SEMICOLON][0]   = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_DECREMENT);
-    res[HID_KEY_APOSTROPHE][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_INCREMENT);
+    res[HID_KEY_SEMICOLON][0]   = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_DECREMENT, "Vol-");
+    res[HID_KEY_APOSTROPHE][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_INCREMENT, "Vol+");
 
-    res[HID_KEY_COMMA][0]   = KA_MediaKey(HID_USAGE_CONSUMER_BRIGHTNESS_DECREMENT);
-    res[HID_KEY_PERIOD][0]  = KA_MediaKey(HID_USAGE_CONSUMER_BRIGHTNESS_INCREMENT);
+    res[HID_KEY_COMMA][0]   = KA_MediaKey(HID_USAGE_CONSUMER_BRIGHTNESS_DECREMENT, "Light-");
+    res[HID_KEY_PERIOD][0]  = KA_MediaKey(HID_USAGE_CONSUMER_BRIGHTNESS_INCREMENT, "Light+");
 
     //COMMA, PERIOD, SLASH  
     
