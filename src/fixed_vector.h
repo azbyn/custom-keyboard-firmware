@@ -9,7 +9,7 @@ class FixedVector {
     size_t _len;
 
 public:
-    constexpr FixedVector(): _len{0}, _data{0} {}
+    constexpr FixedVector(): _data{0}, _len{0} {}
     //i could make an initialiser list constructor but i don't need to use it so i won't
 
     constexpr const auto& array() const noexcept { return _data; }
@@ -40,7 +40,7 @@ public:
     constexpr bool push_n(const T* ptr, size_t len) {
         if (_len + len >= Size) return false;
 
-        for (auto i = 0; i < len; ++i) {
+        for (size_t i = 0; i < len; ++i) {
             _data[_len+i] = ptr[i];
         }
         _len += len;
@@ -65,7 +65,7 @@ public:
         T res = _data[0];
         _len--;
 
-        for (auto i = 0; i < _len; ++i) {
+        for (size_t i = 0; i < _len; ++i) {
             _data[i] = _data[i+1];
         }
         return res;

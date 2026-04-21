@@ -12,7 +12,7 @@
 // #include "img_fast_type.h"
 
 //not doing this has faster uploads
-// #define USE_BACKGROUND 
+#define USE_BACKGROUND 
 
 #ifdef USE_BACKGROUND
 #include "img_bg.h"

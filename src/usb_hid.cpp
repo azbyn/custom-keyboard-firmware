@@ -264,6 +264,8 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 }
 void tud_mount_cb(void) {
   KeyboardStateMachine::getInstance().onUsbMount(true);
+  UsbHid::getInstance().mountState = UsbHid::S_On;
+
   // KeyboardStateMachine::getInstance().onUsbSuspendMode(false);
 
   display_printf("mount");
@@ -271,15 +273,28 @@ void tud_mount_cb(void) {
 void tud_umount_cb(void) {
   KeyboardStateMachine::getInstance().onUsbMount(false);
   display_printf("unmount");
+
+  UsbHid::getInstance().mountState = UsbHid::S_Off;
 }
 void tud_suspend_cb(bool remote_wakeup_en) {
   KeyboardStateMachine::getInstance().onUsbSuspendMode(true);
-  display_printf("SUSP");
+  display_printf("SUSP_%d", remote_wakeup_en);
+
+  UsbHid::getInstance().mountState = remote_wakeup_en? UsbHid::S_SuspendedWakeable : UsbHid::S_SuspendedUnwakeable;
+
     // USB suspended
 }
+// enum MountState {
+//       S_Off,
+//       S_On,
+//       S_Unmounted,
+//       S_SuspendedWakeable,
+//       S_SuspendedUnwakeable,
+//   } mountState = S_Off;
 void tud_resume_cb(void) {
   KeyboardStateMachine::getInstance().onUsbSuspendMode(false);
   display_printf("RESUME");
+  UsbHid::getInstance().mountState = UsbHid::S_On;
 
     // KeyboardStateMachine::setDisplayState(DS_OFF);
 

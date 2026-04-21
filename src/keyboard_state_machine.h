@@ -34,7 +34,7 @@ struct KeyboardStateSnapshot {
     bool usbMounted = false;
 
     bool keyPressed = false;
-    DisplayState state = DS_ShowBindings;// DS_Normal; 
+    DisplayState state = DS_Normal; 
     
     //stats
     uint32_t secSinceBoot = 0;
@@ -135,7 +135,7 @@ public:
         return stateSnapshot.autoNoCaps;
     }
     void setDisplayState(DisplayState state)  {
-        gpio_put(pins::ledMenu, state == DS_Menu);
+        // gpio_put(pins::ledMenu, state == DS_Menu);
         if (stateSnapshot.state == state) return;
 
         stateSnapshot.state = state;

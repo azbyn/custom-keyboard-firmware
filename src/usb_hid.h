@@ -51,6 +51,8 @@ class UsbHid {
 
     friend void tud_suspend_cb(bool remote_wakeup_en);
     friend void tud_resume_cb(void);
+    friend void tud_mount_cb();
+    friend void tud_umount_cb();
 
 
 public:
@@ -62,8 +64,16 @@ public:
     UsbHid& operator=(const UsbHid&) = delete;
 
 private:
+    enum MountState {
+        S_Off,
+        S_On,
+        S_Unmounted,
+        S_SuspendedWakeable,
+        S_SuspendedUnwakeable,
+    } mountState = S_Off;
     bool usbHidWorks() const {
-        return tud_mounted() && tud_hid_ready(); 
+        return mountState == S_On || mountState== S_SuspendedWakeable;
+        // return tud_mounted() && tud_hid_ready(); 
     }
 public:
     void init() {
@@ -151,7 +161,7 @@ private:
     }
 public:
     bool sendUnicodeSequence(char16_t val, UnicodeInputMode mode) {
-        display_printf("U+%04x;%d\n", val, sequence_buffer.size());
+        // display_printf1("U+%04x;%d\n", val, sequence_buffer.size());
         //unicode is 21 bits -> 0x10FFFF max -> 7 digits
         //32 bits -> 10 digits
         // if (val > 0x10FFFF) return false;
@@ -246,6 +256,22 @@ private:
         sendReport(x.modifiers, keys);
     }
     void sendReport(uint8_t modifiers, const uint8_t* keys) const {
+        display_printf(
+            "(%s%s%s%s;",// ;%d]"
+            // "%02x %02x %02x %02x %02x %02x\n",
+            ((modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL)) ? "c": ""),
+            ((modifiers & (KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT)) ? "S": ""),
+            ((modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT)) ? "a": ""),
+            ((modifiers & (KEYBOARD_MODIFIER_LEFTGUI | KEYBOARD_MODIFIER_RIGHTGUI)) ? "g": "")
+
+            // keys[0], keys[1], keys[2],
+            // keys[3], keys[4], keys[5]
+        );
+        for (int i = 0; i<6;++i)
+            if (keys[i])
+                printKey(keys[i]);
+
+        display_printf(";%d", usbHidWorks());
         if (!usbHidWorks()) return;
 
         #if 0
@@ -271,7 +297,7 @@ private:
     }
 public:
     static void printKey(KeyWithModifier k) {
-         if (k.modifiers & (KEYBOARD_MODIFIER_RIGHTGUI|KEYBOARD_MODIFIER_LEFTGUI))
+        if (k.modifiers & (KEYBOARD_MODIFIER_RIGHTGUI|KEYBOARD_MODIFIER_LEFTGUI))
             display_print("W");
         if (k.modifiers & (KEYBOARD_MODIFIER_RIGHTALT|KEYBOARD_MODIFIER_LEFTALT))
             display_print("A");
@@ -339,31 +365,32 @@ public:
         case HID_KEY_COMMA: return ",";
         case HID_KEY_PERIOD: return ".";
         case HID_KEY_SLASH: return "/";
-        case HID_KEY_CAPS_LOCK: return "Caps"; 
+        case HID_KEY_CAPS_LOCK: return "Caps";
+            
+        case HID_KEY_F1: return "F1";
+        case HID_KEY_F2: return "F2";
+        case HID_KEY_F3: return "F3";
+        case HID_KEY_F4: return "F4";
+        case HID_KEY_F5: return "F5";
+        case HID_KEY_F6: return "F6";
+        case HID_KEY_F7: return "F7";
+        case HID_KEY_F8: return "F8";
+        case HID_KEY_F9: return "F9";
+        case HID_KEY_F10: return "F10";
+        case HID_KEY_F11: return "F11";
+        case HID_KEY_F12: return "F12";
+        case HID_KEY_PRINT_SCREEN: return "PrtScr";
+        case HID_KEY_SCROLL_LOCK: return "ScrlLk";
+        case HID_KEY_PAUSE: return "Pause";
+        case HID_KEY_INSERT: return "Ins";
+        case HID_KEY_HOME: return "Home";
+        case HID_KEY_PAGE_UP: return "PgUp";
+        case HID_KEY_DELETE: return "Del";
+        case HID_KEY_END: return "End";
+        case HID_KEY_PAGE_DOWN: return "PgDown";
 
         default: return nullptr;
 
-// #define HID_KEY_F1                          0x3A
-// #define HID_KEY_F2                          0x3B
-// #define HID_KEY_F3                          0x3C
-// #define HID_KEY_F4                          0x3D
-// #define HID_KEY_F5                          0x3E
-// #define HID_KEY_F6                          0x3F
-// #define HID_KEY_F7                          0x40
-// #define HID_KEY_F8                          0x41
-// #define HID_KEY_F9                          0x42
-// #define HID_KEY_F10                         0x43
-// #define HID_KEY_F11                         0x44
-// #define HID_KEY_F12                         0x45
-// #define HID_KEY_PRINT_SCREEN                0x46
-// #define HID_KEY_SCROLL_LOCK                 0x47
-// #define HID_KEY_PAUSE                       0x48
-// #define HID_KEY_INSERT                      0x49
-// #define HID_KEY_HOME                        0x4A
-// #define HID_KEY_PAGE_UP                     0x4B
-// #define HID_KEY_DELETE                      0x4C
-// #define HID_KEY_END                         0x4D
-// #define HID_KEY_PAGE_DOWN                   0x4E
 // #define HID_KEY_ARROW_RIGHT                 0x4F
 // #define HID_KEY_ARROW_LEFT                  0x50
 // #define HID_KEY_ARROW_DOWN                  0x51

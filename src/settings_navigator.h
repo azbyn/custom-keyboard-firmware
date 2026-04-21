@@ -173,7 +173,7 @@ constexpr SettingItem bootloader = {
     .getValName = &getValName
 };
 constexpr SettingItem debug = {
-    .name = "Debug",
+    .name = "Debug Log",
     .move = [] (int x, KeyboardStateSnapshot& s) {
         if (x > 0) s.state = DS_Debug;
     },
@@ -217,10 +217,10 @@ public:
         &MusicNumSetting::setting,
         
         &MenuButtons::restart,
-        &MenuButtons::bootloader,
         &MenuButtons::debug,
         &MenuButtons::keybindingsShow,
 
+        &MenuButtons::bootloader,
         &MenuButtons::back,
     };
     constexpr uint8_t getCurrentSettingIdx() const {return currentSettingIdx;}
@@ -240,8 +240,14 @@ public:
         moveVert(+1);
     }
 
-    void left()  { settingItems[currentSettingIdx]->move(-1, getSS()); }
-    void right() { settingItems[currentSettingIdx]->move(+1, getSS());  }
+    void left()  { 
+        settingItems[currentSettingIdx]->move(-1, getSS());
+        KeyboardStateMachine::getInstance().forceRedraw();
+    }
+    void right() { 
+        settingItems[currentSettingIdx]->move(+1, getSS());  
+        KeyboardStateMachine::getInstance().forceRedraw();
+    }
 
     void exit() { KeyboardStateMachine::getInstance().setDisplayState(DS_Normal); }
 

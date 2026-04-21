@@ -93,16 +93,17 @@ class ShowBindingsModeDisplayer {
         {.key="Gr+y",    .action = "hun u"},
         {.key="Gr+h",    .action = "hun o"},
         
-        {.key= "Ru+Q",   .action="soft"},
+        {.key= "Ru+W",   .action="sh"},
+        {.key= "RuGr+W", .action="soft"},
+
         {.key= "RuGr+R", .action="sht"},
-        {.key= "RuGr+Y", .action="ukr i"},
+        {.key= "RuGr+Y", .action="ukr yi"},
         {.key= "RuGr+A", .action="hard"},
         {.key= "RuGr+G", .action="ukr g"},
-        {.key= "RuGr+J", .action="ukr yi"},
+        {.key= "RuGr+J", .action="ukr i"},
         {.key= "RuGr+N", .action="soft"},
         //
         {.key="W+Wild",  .action = "Menu"},
-
     };
     static constexpr size_t extraKeyHelpsCount = sizeof(extraKeyHelps)/ sizeof(extraKeyHelps[0]);
 
@@ -175,8 +176,10 @@ class ShowBindingsModeDisplayer {
 
     static constexpr size_t _maxKeyHelpSize = []() -> size_t {
         size_t max = 0;
+        int i = 0;
         for (const auto& keyHelp : keyHelps) {
-            if (keyHelp.key[0] == '?') return 420;
+            ++i;
+            if (keyHelp.key[0] == '?') return 420 + i*1000;
             auto sz = constexpr_helpers::constexpr_strlen(keyHelp.key.data(), keyHelp.key.size());// std::string_view(keyHelp.key).size();
             if (sz > max) max = sz;
         }

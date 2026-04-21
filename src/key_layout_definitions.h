@@ -121,6 +121,15 @@ constexpr uint8_t keys[pins::rowLen][18] = {
 constexpr int x = KEYBOARD_MODIFIER_LEFTGUI;
 
 
+inline void sendWin_plus_Num(int num) {
+    if (num <= 0 || num > 9) return;
+    uint8_t key = HID_KEY_1 - 1 + num;
+    KeyWithModifier seq[2] = {
+        {KEYBOARD_MODIFIER_LEFTGUI, key},
+        {0, 0}
+    };
+    UsbHid::getInstance().sendSequence(seq, 2);
+}
 
 //constexpr char32_t mvs = 0x180E; //mongolian vowel separator
 constexpr std::array<UnicodeKeyActions, 0x39> unicodeKeyActions = ([]() {
@@ -130,11 +139,11 @@ constexpr std::array<UnicodeKeyActions, 0x39> unicodeKeyActions = ([]() {
     //x[2] = {},
     //x[3] = {},
     x[HID_KEY_Q] = {u'â', u'Â', u'я', u'Я', 0,    0};
-    x[HID_KEY_W] = {u'ß', u'ß', u'ь', u'Ь', u'ѣ', u'Ѣ'}; // yus/yat is here because i had free space , u'ѫ', u'Ѫ'
+    x[HID_KEY_W] = {u'ß', u'ß', u'ш', u'Ш', u'ь', u'Ь'};
     x[HID_KEY_E] = {u'ę', u'Ę', u'е', u'Е', u'э', u'Э'};
     x[HID_KEY_R] = {u'š', u'Š', u'р', u'Р', u'щ', u'Щ'};
     x[HID_KEY_T] = {u'ț', u'Ț', u'т', u'Т', u'ц', u'Ц'};
-    x[HID_KEY_Y] = {u'ű', u'Ű', u'ы', u'Ы', u'і', u'І'}; //ukrainian i
+    x[HID_KEY_Y] = {u'ű', u'Ű', u'ы', u'Ы', u'ї', u'Ї'};
     x[HID_KEY_U] = {u'ü', u'Ü', u'у', u'У', u'ю', u'Ю'};
     x[HID_KEY_I] = {u'î', u'Î', u'и', u'И', u'ы', u'Ы'};
     x[HID_KEY_O] = {u'ö', u'Ö', u'о', u'О', u'ё', u'Ё'};
@@ -146,7 +155,7 @@ constexpr std::array<UnicodeKeyActions, 0x39> unicodeKeyActions = ([]() {
     x[HID_KEY_F] = {u'ä', u'Ä', u'ф', u'ф', 0,    0};
     x[HID_KEY_G] = {u'đ', u'Đ', u'г', u'Г', u'ґ', u'Ґ'};
     x[HID_KEY_H] = {u'ő', u'Ő', u'х', u'Х', 0,    0};
-    x[HID_KEY_J] = {u'ú', u'Ú', u'й', u'й', u'ї', u'Ї'};
+    x[HID_KEY_J] = {u'ú', u'Ú', u'й', u'й', u'і', u'І'}; //ukrainian i
     x[HID_KEY_K] = {u'ś', u'Ś', u'к', u'К', 0,    0};
     x[HID_KEY_L] = {u'ł', u'Ł', u'л', u'Л', u'љ', u'Љ'};
     
@@ -194,14 +203,13 @@ constexpr std::array<UnicodeKeyActions, 0x39> unicodeKeyActions = ([]() {
 })();
 
 
-constexpr std::array<std::array<KeyAction, 0x10>, 0x39> winKeyActions = ([]() {
-    std::array<std::array<KeyAction, 0x10>, 0x39> res;
+constexpr std::array<std::array<KeyAction, 0x10>, 0x4F> winKeyActions = ([]() {
+    std::array<std::array<KeyAction, 0x10>, 0x4F> res;
 
     constexpr uint8_t KM_WIN   = KEYBOARD_MODIFIER_LEFTGUI;
     constexpr uint8_t KM_CTRL  = KEYBOARD_MODIFIER_LEFTCTRL;
     constexpr uint8_t KM_ALT   = KEYBOARD_MODIFIER_LEFTALT;
     constexpr uint8_t KM_SHIFT = KEYBOARD_MODIFIER_LEFTSHIFT;
-
     // res[HID_KEY_R][SHIFT|CTRL] = KA_Lambda([](KeyboardStateMachine&) {
     //     reset_usb_boot(0,0);
     // });
@@ -234,26 +242,60 @@ constexpr std::array<std::array<KeyAction, 0x10>, 0x39> winKeyActions = ([]() {
     res[HID_KEY_N][ALT] = KA_KeyWithModifier({0, HID_KEY_NUM_LOCK}, "NumL");
 
     res[HID_KEY_M][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+        sendWin_plus_Num(sm.getStateSnapshot().musicItemNum);
+    }, "Music");
+
+    res[HID_KEY_A][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+        sendWin_plus_Num(9);
+    }, "VsCode");
+    res[HID_KEY_S][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+        sendWin_plus_Num(5);
+    }, "term");
+    res[HID_KEY_E][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+        sendWin_plus_Num(8);
+    }, "emacs");
+
+    res[HID_KEY_M][CTRL] = KA_MediaKey(HID_USAGE_CONSUMER_MUTE, "Mute");
+
+    res[HID_KEY_BRACKET_LEFT][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
         auto num = sm.getStateSnapshot().musicItemNum;
         if (num <= 0 || num > 9) return;
         uint8_t key = HID_KEY_1 - 1 + num;
-        KeyWithModifier seq[2] = {
+        KeyWithModifier seq[3] = {
             {KEYBOARD_MODIFIER_LEFTGUI, key},
+            {0, HID_KEY_H},
             {0, 0}
         };
-        UsbHid::getInstance().sendSequence(seq, 2);
-    }, "Music");
+        UsbHid::getInstance().sendSequence(seq, 3);
+    }, "Seek -");
+    res[HID_KEY_BRACKET_RIGHT][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+        auto num = sm.getStateSnapshot().musicItemNum;
+        if (num <= 0 || num > 9) return;
+        uint8_t key = HID_KEY_1 - 1 + num;
+        KeyWithModifier seq[3] = {
+            {KEYBOARD_MODIFIER_LEFTGUI, key},
+            {0, HID_KEY_L},
+            {0, 0}
+        };
+        UsbHid::getInstance().sendSequence(seq, 3);
+    }, "Seek +");
 
-    res[HID_KEY_M][CTRL] = KA_MediaKey(HID_USAGE_CONSUMER_MUTE, "Mute");
 
     // res[HID_KEY_BRACKET_LEFT][0]  = KA_MediaKey(HID_USAGE_CONSUMER_REWIND, "Rewind");
     // res[HID_KEY_BRACKET_RIGHT][0] = KA_MediaKey(HID_USAGE_CONSUMER_FAST_FORWARD, "FastFwd");
 
     res[HID_KEY_SEMICOLON][0]   = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_DECREMENT, "Vol-");
     res[HID_KEY_APOSTROPHE][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_INCREMENT, "Vol+");
+    res[HID_KEY_MINUS][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_DECREMENT, "Vol-");
+    res[HID_KEY_EQUAL][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_INCREMENT, "Vol+");
+
 
     res[HID_KEY_COMMA][0]   = KA_MediaKey(HID_USAGE_CONSUMER_BRIGHTNESS_DECREMENT, "Light-");
     res[HID_KEY_PERIOD][0]  = KA_MediaKey(HID_USAGE_CONSUMER_BRIGHTNESS_INCREMENT, "Light+");
+
+    res[HID_KEY_HOME][0]    = KA_MediaKey(HID_USAGE_CONSUMER_SCAN_PREVIOUS, "Prev");
+    res[HID_KEY_END][0]     = KA_MediaKey(HID_USAGE_CONSUMER_SCAN_NEXT, "Next");
+    res[HID_KEY_PRINT_SCREEN][0]    = KA_MediaKey(HID_USAGE_CONSUMER_PLAY_PAUSE, "Play");
 
     //COMMA, PERIOD, SLASH  
     

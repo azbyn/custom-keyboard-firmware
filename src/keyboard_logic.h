@@ -97,8 +97,10 @@ public:
             } else if (encVal > 0) {
                 hid.pressMedia(HID_USAGE_CONSUMER_VOLUME_INCREMENT);
             } 
-            if (encDown) 
-                reset_usb_boot(0,0);
+            if (encDown)
+                stateMachine.setDisplayState(DS_Menu);
+
+                // reset_usb_boot(0,0);
 
             break;
         };
@@ -232,7 +234,10 @@ private:
             if (!state && (hid.getModifiers() & KEYBOARD_MODIFIER_LEFTGUI)) {
                 hid.setModifierState(KEYBOARD_MODIFIER_LEFTGUI, false);
             }
+            // i don't like this; send no key
+            #if 0
             if (!this->pressingLWin && !this->pressingRWin) {
+                
                 if (!pressedWinCombo) {
                     //if just pressed the win key, send a quick burst of win key
                     KeyWithModifier seq[2] = {
@@ -244,6 +249,7 @@ private:
 
                 pressedWinCombo = false;
             }
+            #endif
             return true;
             //hid.setModifierState(KEYBOARD_MODIFIER_LEFTGUI, state); return true;
         case HID_KEY_GUI_RIGHT:
@@ -252,6 +258,7 @@ private:
                 hid.setModifierState(KEYBOARD_MODIFIER_RIGHTGUI, false);
 
             if (!this->pressingLWin && !this->pressingRWin) {
+                #if 0
                 if (!pressedWinCombo) {
                     //if just pressed the win key, send a quick burst of win key
                     KeyWithModifier seq[2] = {
@@ -260,7 +267,7 @@ private:
                     };
                     hid.sendSequence(seq, 2);
                 }
-
+                #endif
                 pressedWinCombo = false;
             }
 
