@@ -6,7 +6,7 @@
 
 // #include "display.hpp"
 
-enum UnicodeInputMode {
+enum UnicodeInputMode: int {
     UIM_WinCompose,
     UIM_WinNumpad,
     UIM_Linux,
@@ -14,13 +14,13 @@ enum UnicodeInputMode {
     UIM__Size,
 };
 enum DisplayState {
-    DS_OFF,
+    // DS_OFF,
     DS_Normal,
     DS_Menu,
     DS_Debug,
     DS_ShowBindings,
 
-    DS__Size,
+    // DS__Size,
 };
 
 //anything in here should trigger a redraw if changed

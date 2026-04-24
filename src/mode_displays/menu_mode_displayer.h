@@ -48,8 +48,8 @@ public:
         // }
 
         lcd.begin_draw();
-        for (auto y = 0; y < height; ++y) {
-            for (auto x = 0; x < width; ++x) {
+        for (uint16_t y = 0; y < height; ++y) {
+            for (uint16_t x = 0; x < width; ++x) {
                 lcd.put(get_col(x, y));
             }
         }
@@ -111,13 +111,13 @@ private:
             strncpy(buffer[i].data() + sz_x-valSz, val, valSz+1);
         }
     }
-    Color get_col(uint16_t x, uint16_t y) const {
+    Color get_col(uint16_t x_, uint16_t y) const {
         Color bg = colors::black;
         Color fg = colors::white;
         if (y < border_y || y >= (height-border_y)) {
             return bg;
         } else {
-            x -= border_x;
+            int x = x_ - border_x;
             y -= border_y;
             //which char are we on
             int i = x / scale / char_w;
@@ -136,6 +136,7 @@ private:
             if (SettingsNavigator::settingItemsLength < sz_y)
                 if (j >= SettingsNavigator::settingItemsLength) return bg;
 
+            // x < 0 handled since it overwraps
             if (x < 0 || x >= width) return bg;
 
             if (i >= sz_x || j >= sz_y) return bg;

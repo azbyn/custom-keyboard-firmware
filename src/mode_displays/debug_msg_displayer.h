@@ -43,8 +43,8 @@ public:
         }
 
         lcd.begin_draw();
-        for (auto y = 0; y < height; ++y) {
-            for (auto x = 0; x < width; ++x) {
+        for (uint16_t y = 0; y < height; ++y) {
+            for (uint16_t x = 0; x < width; ++x) {
                 lcd.put(get_col(x, y, localBuffer));
             }
         }

@@ -5,7 +5,6 @@ cmake_minimum_required(VERSION 3.13)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
@@ -42,6 +41,9 @@ add_executable(azbyn_keyboard
             usb_hid.cpp
             keyboard_logic.cpp
             )
+#tusb shows a lot of warnings with -Wpedantic
+target_compile_options(azbyn_keyboard PUBLIC -Wall -Wextra)
+# target_compile_options(azbyn_keyboard PUBLIC -Wall -Wextra -Wpedantic)
 
 pico_set_program_name(azbyn_keyboard "azbyn_keyboard")
 pico_set_program_version(azbyn_keyboard "0.1")

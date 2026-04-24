@@ -14,6 +14,13 @@ public:
     static constexpr uint16_t width = 320;
     static constexpr uint16_t height = 172;
 
+    static constexpr uint8_t MADCTL_MY = 1 << 7;
+    static constexpr uint8_t MADCTL_MX = 1 << 6;
+    static constexpr uint8_t MADCTL_MV = 1 << 5;
+    static constexpr uint8_t MADCTL_ML = 1 << 4;
+    static constexpr uint8_t MADCTL_MH = 1 << 2;
+
+
     void init() {
         // Init SPI
         spi_init(pins::disp::spiPtr, 40'000'000); // 40 MHz
@@ -51,12 +58,7 @@ public:
         lcd_write_data(&color_mode, 1);
 
         lcd_write_cmd(0x36); // Memory access control
-        constexpr uint8_t MADCTL_MY = 1 << 7;
-        constexpr uint8_t MADCTL_MX = 1 << 6;
-        constexpr uint8_t MADCTL_MV = 1 << 5;
-        constexpr uint8_t MADCTL_ML = 1 << 4;
-        constexpr uint8_t MADCTL_MH = 1 << 2;
-
+      
         uint8_t madctl = MADCTL_MX| MADCTL_MV;// | (1<<3);
         lcd_write_data(&madctl, 1);
 

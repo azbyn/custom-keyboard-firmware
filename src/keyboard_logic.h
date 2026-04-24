@@ -140,7 +140,7 @@ public:
         // gpio_put(pins::leds[1], state);
         // return;
 
-        static char buffer[256];
+        // static char buffer[256];
         UsbHid& hid = UsbHid::getInstance();
         // gpio_put(pins::leds[0], i%2);
 
@@ -152,7 +152,7 @@ public:
 
         // gpio_put(pins::leds[1], state);
 
-        if (handleSpecialKeypress(pos, state, key)) {
+        if (handleSpecialKeypress(key, state)) {
             return;
         }
         
@@ -164,7 +164,7 @@ public:
 
 private:
     // return true if handled here
-    bool handleSpecialKeypress(KeyPosition pos, KeyState state, uint8_t key) { 
+    bool handleSpecialKeypress(uint8_t key, KeyState state) { 
         if (stateMachine.getDisplayState() == DS_Menu) {
             switch (key) {
             case HID_KEY_ESCAPE: 
@@ -213,7 +213,6 @@ private:
             return true;
         }
         auto& hid = UsbHid::getInstance();
-        auto& disp = Display::getInstance();
 
         switch(key) {
         case HID_KEY_LCTRL: hid.setModifierState(KEYBOARD_MODIFIER_LEFTCTRL, state); return true;
@@ -277,12 +276,16 @@ private:
         case HID_KEY_RALT:
             stateMachine.raltMode = (state == KeyState::PRESSED);
             return true;
+        case HID_KEY_REALRALT:
+            hid.setModifierState(KEYBOARD_MODIFIER_RIGHTALT, state); 
+            return true;
         case HID_KEY_WILDCARD:
             if (this->pressingLWin || this->pressingRWin) {
                 stateMachine.setDisplayState(DS_Menu);
                 return true;
             }
-            hid.setModifierState(KEYBOARD_MODIFIER_RIGHTALT, state); 
+            if (state)
+                hid.pressMedia(HID_USAGE_CONSUMER_PLAY_PAUSE);
             return true;
             
         default: break;
@@ -330,7 +333,7 @@ private:
 
                 switch (a.tag) {
                     //handled above
-                    //case KeyAction::Nothing: break;
+                    case KeyAction::Nothing: break;
                     case KeyAction::KeyboardKeyWithModifier: {
                         KeyWithModifier seq[2] {
                             a.keyboardKeyWithModifier,

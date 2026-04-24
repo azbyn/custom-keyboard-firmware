@@ -107,17 +107,20 @@ public:
     }
 private:
     uint32_t startDimBlTime = 0;
-    bool prevSuspend = false;
+    bool prevDimmed = false;
     void draw() {
         int prevDirtiness = dirtiness;
 
         auto stateSnapshot = KeyboardStateMachine::getStateSnapshot();
 
+        //only dim in normal mode
+        bool shouldDim = stateSnapshot.usbSuspended && stateSnapshot.state == DS_Normal;
+
         // gpio_put(pins::ledMenu, stateSnapshot.usbSuspended);
-        if (stateSnapshot.usbSuspended) {
-            if (!prevSuspend) {
+        if (shouldDim) {
+            if (!prevDimmed) {
                 startDimBlTime = millis() + 1000;
-                prevSuspend = true;
+                prevDimmed = true;
             }
             
             if (startDimBlTime) {
@@ -132,8 +135,8 @@ private:
             //TODO again, add delay?
             return;
         }
-        else if (prevSuspend) {
-            prevSuspend = false;
+        else if (prevDimmed) {
+            prevDimmed = false;
             lcd.init();
         }
         if (!stateSnapshot.usbMounted) {

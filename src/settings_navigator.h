@@ -26,11 +26,13 @@ struct SettingItem {
 };
 
 namespace UnicodeInputModeSetting {
-static constexpr const char* optionNames[] = {
-    [UIM_WinCompose] = "WinComp",
-    [UIM_WinNumpad] = "Numpad",
-    [UIM_Linux] = "Linux",
-};
+static constexpr std::array<const char*, UIM__Size> optionNames = [] {
+    std::array<const char*, UIM__Size> res;
+    res[UIM_WinCompose] = "WinComp";
+    res[UIM_WinNumpad] = "Numpad";
+    res[UIM_Linux] = "Linux";
+    return res;
+}();
 static_assert(UIM__Size == 3);
 constexpr void move(int value, KeyboardStateSnapshot& s)  {
     auto new_val = s.unicodeInputMode - value;
@@ -154,7 +156,7 @@ constexpr SettingItem setting = {
 
 namespace MenuButtons {
 
-inline const char* getValName(const KeyboardStateSnapshot& s)  {
+inline const char* getValName(const KeyboardStateSnapshot&)  {
     return "";
 }
 

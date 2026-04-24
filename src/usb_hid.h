@@ -97,7 +97,7 @@ public:
         else
             this->modifiers &= ~modifier;
         if (_sendReport)
-            sendReport();
+            sendReport(false);
     }
     constexpr uint8_t getModifiers() const { return modifiers; }
     constexpr bool getShiftState() const { 
@@ -112,12 +112,12 @@ public:
     
     void press(uint8_t key) {
         addKeyToKeyreport(key);
-        sendReport();
+        sendReport(false);
     }
     void release(uint8_t key) {
         removeKeyFromKeyreport(key);
 
-        sendReport();
+        sendReport(false);
     }
     void pressMedia(uint16_t key) {
         tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &key, 2);
@@ -173,8 +173,6 @@ public:
 
         snprintf(buff, sizeof(buff), "%04X", val);
 
-        static_assert(UIM__Size == 3);
-
         switch (mode) {
             case UIM_WinCompose:
                 keys.push_back({KEYBOARD_MODIFIER_RIGHTALT, 0});
@@ -215,7 +213,8 @@ public:
 
                 keys.push_back({0, HID_KEY_ENTER});
             } break;
-    
+
+            case UIM__Size: break; //never should reach here
         }
         
         keys.push_back({0, 0});
@@ -253,26 +252,29 @@ private:
 
         keys[0] = x.key;
 
-        sendReport(x.modifiers, keys);
+        sendReport(x.modifiers, keys, false);
     }
-    void sendReport(uint8_t modifiers, const uint8_t* keys) const {
-        display_printf(
-            "(%s%s%s%s;",// ;%d]"
-            // "%02x %02x %02x %02x %02x %02x\n",
-            ((modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL)) ? "c": ""),
-            ((modifiers & (KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT)) ? "S": ""),
-            ((modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT)) ? "a": ""),
-            ((modifiers & (KEYBOARD_MODIFIER_LEFTGUI | KEYBOARD_MODIFIER_RIGHTGUI)) ? "g": "")
+    void sendReport(uint8_t modifiers, const uint8_t* keys, bool isDuplicate) const {
+        if (!isDuplicate) {
+            display_printf(
+                "(%s%s%s%s;",// ;%d]"
+                // "%02x %02x %02x %02x %02x %02x\n",
+                ((modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL)) ? "c": ""),
+                ((modifiers & (KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT)) ? "S": ""),
+                ((modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT)) ? "a": ""),
+                ((modifiers & (KEYBOARD_MODIFIER_LEFTGUI | KEYBOARD_MODIFIER_RIGHTGUI)) ? "g": "")
 
-            // keys[0], keys[1], keys[2],
-            // keys[3], keys[4], keys[5]
-        );
+                // keys[0], keys[1], keys[2],
+                // keys[3], keys[4], keys[5]
+            );
+        }
         for (int i = 0; i<6;++i)
             if (keys[i])
                 printKey(keys[i]);
 
-        display_printf(";%d", usbHidWorks());
-        if (!usbHidWorks()) return;
+        bool ok = usbHidWorks();
+        display_printf(";%d", ok);
+        if (!ok) return;
 
         #if 0
         display_printf(
@@ -428,14 +430,14 @@ public:
         // if (buffer) 
     }
 public:
-    void sendReport() const {
+    void sendReport(bool isDuplicate) const {
         FixedVector<uint8_t, KeyReportLength> keysReport;
         
-        for (auto i = 0; i < this->keys.actualCapacity(); ++i)  {
+        for (size_t i = 0; i < this->keys.actualCapacity(); ++i)  {
             if (!this->keys.get(i)) continue;
             bool hasSpace = keysReport.push_back(i);
             if (!hasSpace) {
-                for (auto j = 0; j < KeyReportLength; ++j) {
+                for (size_t j = 0; j < KeyReportLength; ++j) {
                     keysReport[j] = HID_KEY_ERR_ROLLOVER;
                 }
                 break;
@@ -445,7 +447,7 @@ public:
        
         this->sendReport(
         // tud_hid_keyboard_report(REPORT_ID_KEYBOARD,
-             this->modifiers, keysReport.begin());
+             this->modifiers, keysReport.begin(), isDuplicate);
     }
 private:
     void addKeyToKeyreport(uint8_t keycode) {
@@ -505,20 +507,17 @@ public:
         //(void) report;
 
         if (report[0] == REPORT_ID_CONSUMER_CONTROL) {
-            if (sendingConsumerKey) releaseMedia();
+            if (sendingConsumerKey) {
+                releaseMedia();
+                return;
+            }
         } else {
+            if (sequence_buffer.empty()) {
+                sendReport(true);
+                return;
+            }
             sendReportFromSequence();
         }
-
-
-
-        /*
-        uint8_t next_report_id = report[0] + 1u;
-
-        if (next_report_id < REPORT_ID_COUNT)
-        {
-            send_hid_report(next_report_id, board_button_read());
-        }*/
     }
 
     // Invoked when received GET_REPORT control request

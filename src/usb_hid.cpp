@@ -294,7 +294,7 @@ void tud_suspend_cb(bool remote_wakeup_en) {
 void tud_resume_cb(void) {
   KeyboardStateMachine::getInstance().onUsbSuspendMode(false);
   display_printf("RESUME");
-  UsbHid::getInstance().mountState = UsbHid::S_On;
+  UsbHid::getInstance().mountState = tud_mounted() ? UsbHid::S_On : UsbHid::S_Unmounted;
 
     // KeyboardStateMachine::setDisplayState(DS_OFF);
 

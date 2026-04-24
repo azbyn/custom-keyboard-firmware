@@ -200,7 +200,7 @@ private:
         if (newIdx < 0) {
             newIdx = keyHelps.size() - 1;
             idxOffset = keyHelps.size() - sz_y;
-        } else if (newIdx >= keyHelps.size()) {
+        } else if (newIdx >= (int) keyHelps.size()) {
             newIdx = 0;
             idxOffset = 0;
         }
@@ -219,8 +219,8 @@ public:
 
     void draw(St7789& lcd) {
         lcd.begin_draw();
-        for (auto y = 0; y < height; ++y) {
-            for (auto x = 0; x < width; ++x) {
+        for (uint16_t y = 0; y < height; ++y) {
+            for (uint16_t x = 0; x < width; ++x) {
                 lcd.put(get_col(x, y));
             }
         }
@@ -245,13 +245,15 @@ private:
     //         strncpy(buffer[i].data() + sz_x-valSz, val, valSz+1);
     //     }
     // }
-    Color get_col(uint16_t x, uint16_t y) const {
+    Color get_col(uint16_t x_, uint16_t y) const {
         Color bg = colors::black;
         Color fg = colors::white;
         if (y < border_y || y >= (height-border_y)) {
             return bg;
         } else {
-            x -= border_x;
+            int x = x_ - border_x;
+
+            // x -= border_x;
             y -= border_y;
             //which char are we on
             int i = x / scale / char_w;

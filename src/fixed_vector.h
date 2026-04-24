@@ -9,7 +9,7 @@ class FixedVector {
     size_t _len;
 
 public:
-    constexpr FixedVector(): _data{0}, _len{0} {}
+    constexpr FixedVector(): _data{}, _len(0) {}
     //i could make an initialiser list constructor but i don't need to use it so i won't
 
     constexpr const auto& array() const noexcept { return _data; }

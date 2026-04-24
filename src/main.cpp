@@ -30,9 +30,9 @@ int main() {
 
 
     multicore_launch_core1([] { Display::getInstance().loop();});
-    int32_t kmTime = 0, hidTime = 0, klTime = 0;
+    // int32_t kmTime = 0, hidTime = 0, klTime = 0;
 
-    uint32_t secSinceBoot = 0;
+    // uint32_t secSinceBoot = 0;
     for (;;) {
         // uint32_t t0 = to_us_since_boot(get_absolute_time());
         keyboardMatrix.update();

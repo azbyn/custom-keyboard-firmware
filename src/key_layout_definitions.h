@@ -30,12 +30,6 @@ struct UnicodeKeyActions {
 
 
 struct KeyAction {
-    union {
-        // uint8_t keyboardKey;
-        KeyWithModifier keyboardKeyWithModifier;
-        uint16_t mediaKey;
-        void (*lambda)(KeyboardStateMachine&);
-    };
     enum {
         Nothing = 0,
         KeyboardKeyWithModifier,
@@ -43,6 +37,13 @@ struct KeyAction {
         MediaKey,
         Lambda
     } tag;
+    
+    union {
+        // uint8_t keyboardKey;
+        KeyWithModifier keyboardKeyWithModifier;
+        uint16_t mediaKey;
+        void (*lambda)(KeyboardStateMachine&);
+    };
 
     const char* help = nullptr;
 
@@ -64,14 +65,11 @@ constexpr KeyAction KA_MediaKey(uint16_t val, const char* help = nullptr) {
     KeyAction x;
     x.mediaKey = val; x.tag = KeyAction::MediaKey; x.help = help;
     return x;
-
-//    return KeyAction { .mediaKey = val, .tag = KeyAction::MediaKey };
 }
 constexpr KeyAction KA_Lambda(void (*val)(KeyboardStateMachine&), const char* help = nullptr) {
     KeyAction x;
     x.lambda = val; x.tag = KeyAction::Lambda; x.help = help;
     return x;
-    //return KeyAction { .lambda = val, .tag = KeyAction::Lambda };
 }
 
 
@@ -81,6 +79,8 @@ constexpr KeyAction KA_Lambda(void (*val)(KeyboardStateMachine&), const char* he
 #define HID_KEY_LCTRL HID_KEY_CONTROL_LEFT
 #define HID_KEY_LALT  HID_KEY_ALT_LEFT
 #define HID_KEY_RALT  HID_KEY_ALT_RIGHT
+#define HID_KEY_REALRALT  HID_KEY_F14
+
 #define HID_KEY_SPC   HID_KEY_SPACE
 #define HID_KEY_WILDCARD  HID_KEY_F13
 
@@ -88,25 +88,13 @@ constexpr KeyAction KA_Lambda(void (*val)(KeyboardStateMachine&), const char* he
 #define HID_USAGE_CONSUMER_REWIND 0x00B4
 
 
-// #define R(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18) \
-//     {HID_KEY_##a0, HID_KEY_##a1,  HID_KEY_##a2,  HID_KEY_##a3,  HID_KEY_##a4, \
-//     HID_KEY_##a5,  HID_KEY_##a6,  HID_KEY_##a7,  HID_KEY_##a8,  HID_KEY_##a9, \
-//     HID_KEY_##a10, HID_KEY_##a11, HID_KEY_##a12, HID_KEY_##a13, HID_KEY_##a14,\
-//     HID_KEY_##a15, HID_KEY_##a16, HID_KEY_##a17, HID_KEY_##a18}
+
 #define R(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17) \
     {HID_KEY_##a0, HID_KEY_##a1,  HID_KEY_##a2,  HID_KEY_##a3,  HID_KEY_##a4, \
     HID_KEY_##a5,  HID_KEY_##a6,  HID_KEY_##a7,  HID_KEY_##a8,  HID_KEY_##a9, \
     HID_KEY_##a10, HID_KEY_##a11, HID_KEY_##a12, HID_KEY_##a13, HID_KEY_##a14,\
     HID_KEY_##a15, HID_KEY_##a16, HID_KEY_##a17}
-// constexpr uint8_t keys[pins::rowLen][pins::colLen] = {
-//     //0,          1,    2,     3,  4,  5,   6,  7,  8,     9,      10,           11,            12,            13,                    14,           15,       16,            17,              18
-//     R(ESCAPE,     _,    F1,    F2, F3, F4,  F5, F6, F7,    F8,     F9,           F10,           F11,           F12,                   PRINT_SCREEN, _,        _,             _,               _),
-//     R(GRAVE,      1,    2,     3,  4,  5,   6,  7,  8,     9,      0,            MINUS,         EQUAL,         BACKSPACE,             HOME,         END,      KEYPAD_DIVIDE, KEYPAD_MULTIPLY, KEYPAD_SUBTRACT),
-//     R(TAB,        Q,    W,     E,  R,  T,   Y,  U,  I,     O,      P,            BRACKET_LEFT,  BRACKET_RIGHT, BACKSLASH,             DELETE,       KEYPAD_7, KEYPAD_8,      KEYPAD_9,        KEYPAD_ADD),
-//     R(GUI_LEFT,   A,    S,     D,  F,  G,   H,  J,  K,     L,      SEMICOLON,    APOSTROPHE,    _,             ENTER,                 WILDCARD,     KEYPAD_4, KEYPAD_5,      KEYPAD_6,        _),
-//     R(SHIFT_LEFT, Z,    X,     C,  V,  B,   N,  M,  COMMA, PERIOD, SLASH,        _,             SHIFT_RIGHT,   ARROW_UP,              _,            KEYPAD_1, KEYPAD_2,      KEYPAD_3,        KEYPAD_ENTER),
-//     R(RCTRL,      LALT, LCTRL, _,  _,  SPC, _,  _,  _,     RALT,   FN,           RCTRL,         ARROW_LEFT,    ARROW_DOWN,            ARROW_RIGHT,  KEYPAD_0, _,             KEYPAD_DECIMAL,  _),
-// };
+
 constexpr uint8_t keys[pins::rowLen][18] = {
     //0,          1,    2,     3,  4,  5,   6,  7,  8,     9,      10,           11,            12,            13,                    14,           15,              16,            17
     R(ESCAPE,     _,    F1,    F2, F3, F4,  F5, F6, F7,    F8,     F9,           F10,           F11,           F12,                   PRINT_SCREEN, KEYPAD_SUBTRACT, KEYPAD_ADD,    KEYPAD_ENTER),
@@ -114,7 +102,7 @@ constexpr uint8_t keys[pins::rowLen][18] = {
     R(TAB,        Q,    W,     E,  R,  T,   Y,  U,  I,     O,      P,            BRACKET_LEFT,  BRACKET_RIGHT, BACKSLASH,             DELETE,       KEYPAD_7,        KEYPAD_8,      KEYPAD_9),
     R(GUI_LEFT,   A,    S,     D,  F,  G,   H,  J,  K,     L,      SEMICOLON,    APOSTROPHE,    _,             ENTER,                 WILDCARD,     KEYPAD_4,        KEYPAD_5,      KEYPAD_6),
     R(SHIFT_LEFT, Z,    X,     C,  V,  B,   N,  M,  COMMA, PERIOD, SLASH,        _,             SHIFT_RIGHT,   ARROW_UP,              _,            KEYPAD_1,        KEYPAD_2,      KEYPAD_3),
-    R(RCTRL,      LALT, LCTRL, _,  _,  SPC, _,  _,  _,     RALT,   FN,           RCTRL,         ARROW_LEFT,    ARROW_DOWN,            ARROW_RIGHT,  KEYPAD_0,        _,             KEYPAD_DECIMAL),
+    R(RCTRL,      LALT, LCTRL, _,  _,  SPC, _,  _,  _,     RALT,   FN,           REALRALT,      ARROW_LEFT,    ARROW_DOWN,            ARROW_RIGHT,  KEYPAD_0,        _,             KEYPAD_DECIMAL),
 };
 #undef R
 
@@ -206,10 +194,11 @@ constexpr std::array<UnicodeKeyActions, 0x39> unicodeKeyActions = ([]() {
 constexpr std::array<std::array<KeyAction, 0x10>, 0x4F> winKeyActions = ([]() {
     std::array<std::array<KeyAction, 0x10>, 0x4F> res;
 
-    constexpr uint8_t KM_WIN   = KEYBOARD_MODIFIER_LEFTGUI;
-    constexpr uint8_t KM_CTRL  = KEYBOARD_MODIFIER_LEFTCTRL;
-    constexpr uint8_t KM_ALT   = KEYBOARD_MODIFIER_LEFTALT;
-    constexpr uint8_t KM_SHIFT = KEYBOARD_MODIFIER_LEFTSHIFT;
+    
+    [[maybe_unused]] constexpr uint8_t KM_WIN   = KEYBOARD_MODIFIER_LEFTGUI;
+    [[maybe_unused]] constexpr uint8_t KM_CTRL  = KEYBOARD_MODIFIER_LEFTCTRL;
+    [[maybe_unused]] constexpr uint8_t KM_ALT   = KEYBOARD_MODIFIER_LEFTALT;
+    [[maybe_unused]] constexpr uint8_t KM_SHIFT = KEYBOARD_MODIFIER_LEFTSHIFT;
     // res[HID_KEY_R][SHIFT|CTRL] = KA_Lambda([](KeyboardStateMachine&) {
     //     reset_usb_boot(0,0);
     // });
@@ -245,40 +234,40 @@ constexpr std::array<std::array<KeyAction, 0x10>, 0x4F> winKeyActions = ([]() {
         sendWin_plus_Num(sm.getStateSnapshot().musicItemNum);
     }, "Music");
 
-    res[HID_KEY_A][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+    res[HID_KEY_A][0] = KA_Lambda([] (KeyboardStateMachine&) {
         sendWin_plus_Num(9);
     }, "VsCode");
-    res[HID_KEY_S][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+    res[HID_KEY_S][0] = KA_Lambda([] (KeyboardStateMachine&) {
         sendWin_plus_Num(5);
     }, "term");
-    res[HID_KEY_E][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+    res[HID_KEY_E][0] = KA_Lambda([] (KeyboardStateMachine& ) {
         sendWin_plus_Num(8);
     }, "emacs");
 
     res[HID_KEY_M][CTRL] = KA_MediaKey(HID_USAGE_CONSUMER_MUTE, "Mute");
 
-    res[HID_KEY_BRACKET_LEFT][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
-        auto num = sm.getStateSnapshot().musicItemNum;
-        if (num <= 0 || num > 9) return;
-        uint8_t key = HID_KEY_1 - 1 + num;
-        KeyWithModifier seq[3] = {
-            {KEYBOARD_MODIFIER_LEFTGUI, key},
-            {0, HID_KEY_H},
-            {0, 0}
-        };
-        UsbHid::getInstance().sendSequence(seq, 3);
-    }, "Seek -");
-    res[HID_KEY_BRACKET_RIGHT][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
-        auto num = sm.getStateSnapshot().musicItemNum;
-        if (num <= 0 || num > 9) return;
-        uint8_t key = HID_KEY_1 - 1 + num;
-        KeyWithModifier seq[3] = {
-            {KEYBOARD_MODIFIER_LEFTGUI, key},
-            {0, HID_KEY_L},
-            {0, 0}
-        };
-        UsbHid::getInstance().sendSequence(seq, 3);
-    }, "Seek +");
+    // res[HID_KEY_BRACKET_LEFT][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+    //     auto num = sm.getStateSnapshot().musicItemNum;
+    //     if (num <= 0 || num > 9) return;
+    //     uint8_t key = HID_KEY_1 - 1 + num;
+    //     KeyWithModifier seq[3] = {
+    //         {KEYBOARD_MODIFIER_LEFTGUI, key},
+    //         {0, HID_KEY_H},
+    //         {0, 0}
+    //     };
+    //     UsbHid::getInstance().sendSequence(seq, 3);
+    // }, "Seek -");
+    // res[HID_KEY_BRACKET_RIGHT][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
+    //     auto num = sm.getStateSnapshot().musicItemNum;
+    //     if (num <= 0 || num > 9) return;
+    //     uint8_t key = HID_KEY_1 - 1 + num;
+    //     KeyWithModifier seq[3] = {
+    //         {KEYBOARD_MODIFIER_LEFTGUI, key},
+    //         {0, HID_KEY_L},
+    //         {0, 0}
+    //     };
+    //     UsbHid::getInstance().sendSequence(seq, 3);
+    // }, "Seek +");
 
 
     // res[HID_KEY_BRACKET_LEFT][0]  = KA_MediaKey(HID_USAGE_CONSUMER_REWIND, "Rewind");

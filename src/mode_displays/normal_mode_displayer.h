@@ -41,8 +41,8 @@ public:
         bottomStateDisplayer.calculateStuff(snapshot);
         middleDisplayer.calculateStuff(snapshot);
         lcd.begin_draw();
-        for (auto y = 0; y < lcd_height; ++y) {
-            for (auto x = 0; x < lcd_width; ++x) {
+        for (uint16_t y = 0; y < lcd_height; ++y) {
+            for (uint16_t x = 0; x < lcd_width; ++x) {
                 lcd.put(get_col(x, y, snapshot));
             }
         }
@@ -67,15 +67,15 @@ private:
         void calculateStuff(uint32_t timeS) {
             
             // int s = timeS % 60;
-            int m_full = timeS / 60;
+            uint32_t m_full = timeS / 60;
             // int m = m_full % 60;
-            int h_full = m_full / 60;
-            int d_full = h_full / 24;
+            uint32_t h_full = m_full / 60;
+            uint32_t d_full = h_full / 24;
             if (d_full < 1000) {
                 // if you keep this running for more than 3 years i don't care that the 
                 // display doesn't show the uptime correctly
                 snprintf(timeBuff,sizeof(timeBuff),
-                    "% 3d %02d:%02d:%02d",
+                    "%3lu %02lu:%02lu:%02lu",
 
                     d_full,
                     h_full % 24,
@@ -141,6 +141,7 @@ private:
                 case UIM_WinCompose: unicodeModeChr = 'W'; break;
                 case UIM_WinNumpad: unicodeModeChr = 'N'; break;
                 case UIM_Linux: unicodeModeChr = 'L'; break;
+                case UIM__Size: break;//should never happen, but let's have no warning 
             }
 
             snprintf(buffer, sizeof(buffer),

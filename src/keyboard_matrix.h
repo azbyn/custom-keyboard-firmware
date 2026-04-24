@@ -11,7 +11,7 @@ enum KeyState {
     RELEASED = 0,
 };
 struct KeyPosition {
-    int col, row;
+    size_t col, row;
     constexpr bool operator==(const KeyPosition& rhs) {
         return this->row == rhs.row && this->col == rhs.col;
     }
@@ -63,7 +63,7 @@ public:
         }
         #endif
     }
-    void print_state(bool arr[]) {
+    void print_state([[maybe_unused]] bool arr[]) {
         return;
         // // Serial.printf("%6d; %6d:", board_micros(), delta_n);
         // // printf("%9d;", board_micros());
@@ -144,8 +144,8 @@ public:
         //check what changed
         bool has_update = false;
         uint32_t timeNow = millis();
-        for (int c = 0; c < colLen; ++c) {
-            for (int r = 0; r < rowLen; ++r) {
+        for (size_t c = 0; c < colLen; ++c) {
+            for (size_t r = 0; r < rowLen; ++r) {
                 auto i = c * rowLen + r;
                 auto prev = prevState[i];
                 auto now  = newState[i];
