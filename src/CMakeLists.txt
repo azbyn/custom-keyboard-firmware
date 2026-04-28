@@ -34,8 +34,6 @@ project(azbyn_keyboard C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
-
 add_executable(azbyn_keyboard
             main.cpp
             usb_hid.cpp
@@ -46,7 +44,7 @@ target_compile_options(azbyn_keyboard PUBLIC -Wall -Wextra)
 # target_compile_options(azbyn_keyboard PUBLIC -Wall -Wextra -Wpedantic)
 
 pico_set_program_name(azbyn_keyboard "azbyn_keyboard")
-pico_set_program_version(azbyn_keyboard "0.1")
+pico_set_program_version(azbyn_keyboard "1.0.2")
 
 # Modify the below lines to enable/disable output over UART/USB
 # pico_enable_stdio_uart(azbyn_keyboard 0)
@@ -68,5 +66,5 @@ target_include_directories(azbyn_keyboard PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
-# pico_add_extra_outputs(azbyn_keyboard)
+pico_add_extra_outputs(azbyn_keyboard)
 

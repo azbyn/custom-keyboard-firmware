@@ -100,14 +100,14 @@ private:
 
 
         for (int i = 0; i < SettingsNavigator::settingItemsLength; ++i) {
-            auto s = SettingsNavigator::settingItems[i];
+            auto& s = SettingsNavigator::settingItems[i];
 
-            auto val = s->getValName(ss);
+            auto val = s.getValName(ss);
             auto valSz = strlen(val);
 
             buffer[i] = {};
             
-            strncpy(buffer[i].data(), s->name, sz_x+1);
+            strncpy(buffer[i].data(), s.name, sz_x+1);
             strncpy(buffer[i].data() + sz_x-valSz, val, valSz+1);
         }
     }

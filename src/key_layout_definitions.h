@@ -273,8 +273,8 @@ constexpr std::array<std::array<KeyAction, 0x10>, 0x4F> winKeyActions = ([]() {
     // res[HID_KEY_BRACKET_LEFT][0]  = KA_MediaKey(HID_USAGE_CONSUMER_REWIND, "Rewind");
     // res[HID_KEY_BRACKET_RIGHT][0] = KA_MediaKey(HID_USAGE_CONSUMER_FAST_FORWARD, "FastFwd");
 
-    res[HID_KEY_SEMICOLON][0]   = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_DECREMENT, "Vol-");
-    res[HID_KEY_APOSTROPHE][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_INCREMENT, "Vol+");
+    // res[HID_KEY_SEMICOLON][0]   = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_DECREMENT, "Vol-");
+    // res[HID_KEY_APOSTROPHE][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_INCREMENT, "Vol+");
     res[HID_KEY_MINUS][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_DECREMENT, "Vol-");
     res[HID_KEY_EQUAL][0]  = KA_MediaKey(HID_USAGE_CONSUMER_VOLUME_INCREMENT, "Vol+");
 

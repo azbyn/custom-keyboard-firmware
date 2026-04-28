@@ -5,6 +5,8 @@
 #include <pico/bootrom.h> //reset_usb_boot
 #include <hardware/watchdog.h>
 
+#include "usb_cdc.h"
+
 struct SettingItem {
     const char* name;
 
@@ -25,6 +27,48 @@ struct SettingItem {
     // const char* getValName(const KeyboardSettings&) const {}// = delete;
 };
 
+#define BOOL_SETTING(_name, _what) \
+    (SettingItem { \
+        .name = _name, \
+        .move = [] ( [[maybe_unused]] int value, [[maybe_unused]] KeyboardStateSnapshot& s) { \
+            /*if (value < 0) return;*/\
+            _what = !_what;\
+        },\
+        .getValName = [] ([[maybe_unused]] const KeyboardStateSnapshot& s) {\
+            return _what ? "on" : "off";\
+        }\
+    })
+
+#define ACTION_SETTING(_name, _action) \
+    (SettingItem {\
+        .name = _name,\
+        .move = [] (int x, [[maybe_unused]] KeyboardStateSnapshot& s) {\
+            if (x > 0) { _action; } \
+        },\
+        .getValName = [] (const KeyboardStateSnapshot&) -> const char* { return ""; }\
+    })
+#define ENUM_SETTING(_name, _what, _OptionsSize, _optionNamesArray) \
+    (SettingItem { \
+        .name = _name,\
+        .move = [] (int value, [[maybe_unused]] KeyboardStateSnapshot& s) {\
+            auto new_val = _what - value;\
+            \
+            if (new_val < 0) {\
+                new_val = _OptionsSize - 1;\
+            }\
+            else if (new_val >= _OptionsSize) {\
+                new_val = 0;\
+            }\
+            _what = (decltype(_what)) new_val;\
+        },\
+        .getValName = [] ([[maybe_unused]]const KeyboardStateSnapshot& s) {\
+            constexpr std::array<const char*, _OptionsSize> optionNames = _optionNamesArray;\
+            /*the 'if' should never happen*/\
+            if (_what >= _OptionsSize || _what < 0)  return "?";\
+            return optionNames[_what];\
+        }\
+    })
+/*
 namespace UnicodeInputModeSetting {
 static constexpr std::array<const char*, UIM__Size> optionNames = [] {
     std::array<const char*, UIM__Size> res;
@@ -58,43 +102,28 @@ constexpr SettingItem setting = {
     .getValName = &getValName
 };
 
-};
+};*/
 
-namespace ShowBgSetting {
-
-constexpr void move(int value, KeyboardStateSnapshot& s)  {
-    (void) value;
-    s.showBg = !s.showBg;
-}
-constexpr const char* getValName(const KeyboardStateSnapshot& s)  {
-    return s.showBg ? "on" : "off";
-}
+namespace CdcSetting {
 
 
 constexpr SettingItem setting = {
-    .name = "Display Bg",
-    .move = &move,
-    .getValName = &getValName
+    .name = "Serial",
+    .move = [] (int value, KeyboardStateSnapshot&)  {
+        (void) value;
+        auto& cdc = UsbCdc::getInstance();
+        cdc.setCdcEnabled(!cdc.isCdcEnabled());
+    },
+    .getValName = [](const KeyboardStateSnapshot&)  {
+        auto& cdc = UsbCdc::getInstance();
+        return cdc.isCdcEnabled() ? "on" : "off";
+    }
 };
 
 };
-namespace AutoNoCapsSetting {
-constexpr void move(int value, KeyboardStateSnapshot& s)  {
-    (void) value;
-    s.autoNoCaps = !s.autoNoCaps;
-}
-constexpr const char* getValName(const KeyboardStateSnapshot& s)  {
-    return s.autoNoCaps ? "on" : "off";
-}
 
 
-constexpr SettingItem setting = {
-    .name = "Auto No Caps",
-    .move = &move,
-    .getValName = &getValName
-};
 
-};
 
 namespace BrightnessSetting {
 
@@ -154,76 +183,67 @@ constexpr SettingItem setting = {
 };
 
 
-namespace MenuButtons {
-
-inline const char* getValName(const KeyboardStateSnapshot&)  {
-    return "";
-}
-
-constexpr SettingItem restart = {
-    .name = "Restart",
-    .move = [] (int x, KeyboardStateSnapshot& ) {
-        if (x > 0) watchdog_reboot(0,0,0);
-    },
-    .getValName = &getValName
-};
-constexpr SettingItem bootloader = {
-    .name = "Enter Bootloader",
-    .move = [] (int x, KeyboardStateSnapshot& ) {
-        if (x > 0) reset_usb_boot(0,0);
-    },
-    .getValName = &getValName
-};
-constexpr SettingItem debug = {
-    .name = "Debug Log",
-    .move = [] (int x, KeyboardStateSnapshot& s) {
-        if (x > 0) s.state = DS_Debug;
-    },
-    .getValName = &getValName
-};
-
-constexpr SettingItem back = {
-    .name = "Back",
-    .move = [] (int x, KeyboardStateSnapshot& s) {
-        if (x > 0) s.state = DS_Normal;
-    },
-    .getValName = &getValName
-};
-
-constexpr SettingItem keybindingsShow = {
-    .name = "Keybindings Show",
-    .move = [] (int x, KeyboardStateSnapshot& s) {
-        if (x > 0) s.state = DS_ShowBindings;
-    },
-    .getValName = &getValName
-};
-
-
-};
-
 class SettingsNavigator {
     int currentSettingIdx = 0;
+
+
     // int getTopOffset = 0;
 
     //defined in keyboard logic
     // static constexpr int getMaxDisplaySz() {
     //     return MenuModeDisplayer::sz_y;
     // }
+    static constexpr SettingItem unicodeInputModeSetting =
+        ENUM_SETTING("UniInput", s.unicodeInputMode, UIM__Size, 
+            ([] {
+                std::array<const char*, UIM__Size> res;
+                res[UIM_WinCompose] = "WinComp";
+                res[UIM_WinNumpad] = "Numpad";
+                res[UIM_Linux] = "Linux";
+                return res;
+            }()));
+    static constexpr SettingItem reportRepeatMode =
+        ENUM_SETTING("RepeatReport", s.repeatReportType, RRT__Size, 
+            ([] {
+                std::array<const char*, RRT__Size> res;
+                res[RRT_No] = "No";
+                res[RRT_One] = "One";
+                res[RRT_Five] = "Five";
 
+                res[RRT_Infinite] = "Inf";
+                return res;
+            }()));
+    static constexpr SettingItem version = {
+        .name = "Version",
+        .move = [] (int, KeyboardStateSnapshot&) {},
+        .getValName = [] (const KeyboardStateSnapshot&) { return PICO_PROGRAM_VERSION_STRING; },
+    };
 public:
-    static constexpr const SettingItem* settingItems[] = {
-        &UnicodeInputModeSetting::setting,
-        &ShowBgSetting::setting,
-        // &BrightnessSetting::setting,
-        &AutoNoCapsSetting::setting,
-        &MusicNumSetting::setting,
-        
-        &MenuButtons::restart,
-        &MenuButtons::debug,
-        &MenuButtons::keybindingsShow,
+    static constexpr SettingItem settingItems[] = {
+        version,
+        unicodeInputModeSetting,
+        reportRepeatMode,
 
-        &MenuButtons::bootloader,
-        &MenuButtons::back,
+        BOOL_SETTING("Snd key umnted", s.sendCodesWhenKbdUnmounted),
+
+        // UnicodeInputModeSetting::setting,
+
+        BOOL_SETTING("Display Bg", s.showBg),
+        // BOOL_SETTING("RepeatReport", s.repeatReport),
+
+        BOOL_SETTING("Auto No Caps", s.autoNoCaps),
+
+        // &BrightnessSetting::setting,
+
+        MusicNumSetting::setting,
+        
+        ACTION_SETTING("Restart", {watchdog_reboot(0,0,0);}),
+        ACTION_SETTING("Debug Log", { s.state = DS_Debug; }),
+        ACTION_SETTING("Keybindings Show", { s.state = DS_ShowBindings;}),
+
+        CdcSetting::setting,
+        ACTION_SETTING("Enter Bootloader", { reset_usb_boot(0,0); }),
+        ACTION_SETTING("Back", { s.state = DS_Normal;}),
     };
     constexpr uint8_t getCurrentSettingIdx() const {return currentSettingIdx;}
     
@@ -243,11 +263,11 @@ public:
     }
 
     void left()  { 
-        settingItems[currentSettingIdx]->move(-1, getSS());
+        settingItems[currentSettingIdx].move(-1, getSS());
         KeyboardStateMachine::getInstance().forceRedraw();
     }
     void right() { 
-        settingItems[currentSettingIdx]->move(+1, getSS());  
+        settingItems[currentSettingIdx].move(+1, getSS());  
         KeyboardStateMachine::getInstance().forceRedraw();
     }
 

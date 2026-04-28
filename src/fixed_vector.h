@@ -18,16 +18,22 @@ public:
     constexpr const T* end() const noexcept { return _data.begin() + _len; }
 
     constexpr size_t size() const { return _len; }
+    constexpr size_t capacity() const { return Size; }
+
     constexpr bool empty() const { return _len == 0; }
 
-    T& operator[](size_t i) { return _data[i]; }
-    const T& operator[](size_t i) const { return _data[i]; }
+    constexpr T& operator[](size_t i) { return _data[i]; }
+    constexpr const T& operator[](size_t i) const { return _data[i]; }
+
+    constexpr void clear() {
+        _len = 0;
+    }
 
 
     /// @brief 
     /// @param x 
     /// @return if no space is left, return false
-    bool push_back(const T& x) {
+    constexpr bool push_back(const T& x) {
         if (_len +1 >= Size) return false;
         _data[_len++] = x;
         return true;
@@ -51,7 +57,7 @@ public:
     /// @brief 
     /// @return returns the default T object if no elements are present
     /// You probablly don't want that, so check before popping
-    T pop_back() {
+    constexpr T pop_back() {
         if (_len == 0) return T{};
         return _data[--_len];
     }
@@ -59,7 +65,7 @@ public:
     /// @brief 
     /// @return returns the default T object if no elements are present
     /// You probablly don't want that, so check before popping
-    T pop_front() {
+    constexpr T pop_front() {
         if (_len == 0) return T{};
 
         T res = _data[0];

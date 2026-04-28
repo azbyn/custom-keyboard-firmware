@@ -9,6 +9,7 @@
 #include "display.hpp"
 #include "usb_hid.h"
 #include "keyboard_logic.h"
+#include "usb_cdc.h"
 
 void display_print(const char* fmt) {
     Display::getInstance().print(fmt);
@@ -19,7 +20,7 @@ int main() {
     auto& display = Display::getInstance();
     auto& hid = UsbHid::getInstance();
     auto& keyboardLogic = KeyboardLogic::getInstance();
-
+    // auto& cdc = UsbCdc::getInstance();
 
     stdio_init_all();
 
@@ -41,6 +42,7 @@ int main() {
         // uint32_t t2 = to_us_since_boot(get_absolute_time());
         keyboardLogic.update();
         // uint32_t t3 = to_us_since_boot(get_absolute_time());
+        
 
         // kmTime  += t1 - t0;
         // hidTime += t2 - t1;

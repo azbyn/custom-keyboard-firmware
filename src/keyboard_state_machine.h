@@ -7,12 +7,21 @@
 // #include "display.hpp"
 
 enum UnicodeInputMode: int {
-    UIM_WinCompose,
+    UIM_WinCompose = 0,
     UIM_WinNumpad,
     UIM_Linux,
 
     UIM__Size,
 };
+
+enum RepeatReportType: int {
+    RRT_No = 0,
+    RRT_One,
+    RRT_Five,
+    RRT_Infinite,
+    RRT__Size,
+};
+
 enum DisplayState {
     // DS_OFF,
     DS_Normal,
@@ -28,6 +37,11 @@ struct KeyboardStateSnapshot {
     bool numLock, capsLock, scrollLock;
     bool ruskiMode;
     bool composeMode;
+
+    bool sendCodesWhenKbdUnmounted = true;
+
+    RepeatReportType repeatReportType = RRT_Five;
+
 
     //not part of "DisplayState" so we can remember the previous state
     bool usbSuspended = false;

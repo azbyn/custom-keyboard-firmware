@@ -9,6 +9,11 @@ gen_cmake:
 	rm -rf ${BUILD_DIR}
 	cmake -B ${BUILD_DIR} -S ${ROOT_DIR}/src -G Ninja
 
+.PHONY: serial
+serial:
+	minicom -D /dev/ttyACM0
+
+
 .PHONY: build
 build:
 	ninja  -C ${BUILD_DIR}

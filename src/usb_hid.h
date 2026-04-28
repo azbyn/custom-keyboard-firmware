@@ -35,7 +35,6 @@ void onKbdLedRequest(uint8_t state);
 
 //}
 
-
 //a singleton class is used here because i don't have to forward declare everything
 class UsbHid {
     FixedVector<KeyWithModifier, 512/*256*/> sequence_buffer;
@@ -47,13 +46,14 @@ class UsbHid {
     
     // bool suspended = false;
 
-    UsbHid() {}
 
     friend void tud_suspend_cb(bool remote_wakeup_en);
     friend void tud_resume_cb(void);
     friend void tud_mount_cb();
     friend void tud_umount_cb();
 
+
+    UsbHid() {}
 
 public:
     static UsbHid& getInstance(){
@@ -62,6 +62,9 @@ public:
     }
     UsbHid(const UsbHid&) = delete;
     UsbHid& operator=(const UsbHid&) = delete;
+
+    RepeatReportType getRepeatReportType() const;
+
 
 private:
     enum MountState {
@@ -254,8 +257,15 @@ private:
 
         sendReport(x.modifiers, keys, false);
     }
-    void sendReport(uint8_t modifiers, const uint8_t* keys, bool isDuplicate) const {
-        if (!isDuplicate) {
+    int numSentRepeatedReport = 0;
+
+    void sendReport(uint8_t modifiers, const uint8_t* keys, bool isRepeatedReport) {    
+        if (isRepeatedReport) {
+            ++this->numSentRepeatedReport;
+        } else {
+            numSentRepeatedReport = 0;
+        }
+        if (!isRepeatedReport) {
             display_printf(
                 "(%s%s%s%s;",// ;%d]"
                 // "%02x %02x %02x %02x %02x %02x\n",
@@ -272,8 +282,12 @@ private:
             if (keys[i])
                 printKey(keys[i]);
 
-        bool ok = usbHidWorks();
-        display_printf(";%d", ok);
+        bool ok = usbHidWorks() || KeyboardStateMachine::getStateSnapshot().sendCodesWhenKbdUnmounted;
+        if (isRepeatedReport && !ok) {
+            display_printf("SEND_REP_W_OFF");
+        }
+        if (!isRepeatedReport)
+            display_printf(";%d", ok);
         if (!ok) return;
 
         #if 0
@@ -430,7 +444,7 @@ public:
         // if (buffer) 
     }
 public:
-    void sendReport(bool isDuplicate) const {
+    void sendReport(bool isDuplicate) {
         FixedVector<uint8_t, KeyReportLength> keysReport;
         
         for (size_t i = 0; i < this->keys.actualCapacity(); ++i)  {
@@ -445,9 +459,7 @@ public:
         }
 
        
-        this->sendReport(
-        // tud_hid_keyboard_report(REPORT_ID_KEYBOARD,
-             this->modifiers, keysReport.begin(), isDuplicate);
+        this->sendReport(this->modifiers, keysReport.begin(), isDuplicate);
     }
 private:
     void addKeyToKeyreport(uint8_t keycode) {
@@ -506,16 +518,33 @@ public:
         (void) len;
         //(void) report;
 
+
         if (report[0] == REPORT_ID_CONSUMER_CONTROL) {
             if (sendingConsumerKey) {
                 releaseMedia();
                 return;
             }
-        } else {
+        } else if (report[0] == REPORT_ID_KEYBOARD) {
             if (sequence_buffer.empty()) {
-                sendReport(true);
+                auto rrt = getRepeatReportType();
+                switch (rrt) {
+                    case RRT__Size: break;//shouldn't happen
+                    case RRT_No: break;//don't send the report again
+                    case RRT_One:
+                        if (!numSentRepeatedReport)
+                            sendReport(true);  
+                        break;
+                    case RRT_Five:
+                        if (numSentRepeatedReport < 5)
+                            sendReport(true);
+                        break;
+                    case RRT_Infinite: 
+                        sendReport(true);  
+                        break;
+                }
                 return;
             }
+
             sendReportFromSequence();
         }
     }
