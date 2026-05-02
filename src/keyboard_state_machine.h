@@ -39,8 +39,10 @@ struct KeyboardStateSnapshot {
     bool composeMode;
 
     bool sendCodesWhenKbdUnmounted = true;
+    bool nkro = true;
+    bool cdcEnabled = false;
 
-    RepeatReportType repeatReportType = RRT_Five;
+    RepeatReportType repeatReportType = RRT_No;// RRT_Five;
 
 
     //not part of "DisplayState" so we can remember the previous state

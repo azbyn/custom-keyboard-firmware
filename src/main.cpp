@@ -14,6 +14,9 @@
 void display_print(const char* fmt) {
     Display::getInstance().print(fmt);
 }
+void cdc_print(std::string_view s) {
+    UsbCdc::getInstance().print(s);
+}
 
 int main() {
     auto& keyboardMatrix = KeyboardMatrix::getInstance();

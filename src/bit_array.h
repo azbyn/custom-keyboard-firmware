@@ -8,7 +8,12 @@ class BitArray {
 public:
     BitArray() {}
 
-    constexpr size_t actualCapacity() const { return sizeof(_data) * 8; }
+    static constexpr size_t actualCapacity() { return sizeof(_data) * 8; }
+    static constexpr size_t sizeBytes() { return sizeof(_data); }
+    static constexpr size_t sizeBits() { return Size; }
+
+    constexpr const uint8_t* data() const { return _data; }
+
 
     bool get(size_t i) const {
         if (i > actualCapacity()) return false;// shouldn't happen

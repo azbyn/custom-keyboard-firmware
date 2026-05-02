@@ -280,13 +280,17 @@ private:
             hid.setModifierState(KEYBOARD_MODIFIER_RIGHTALT, state); 
             return true;
         case HID_KEY_WILDCARD:
-            if (this->pressingLWin || this->pressingRWin) {
-                stateMachine.setDisplayState(DS_Menu);
-                return true;
+            if (!this->pressingLWin && !this->pressingRWin) {
+                return true;//don't send wildcard as a key
             }
-            if (state)
-                hid.pressMedia(HID_USAGE_CONSUMER_PLAY_PAUSE);
-            return true;
+
+        //          KA_KeyWithModifier({KM_WIN, 0}, "Win");
+        //         // stateMachine.setDisplayState(DS_Menu);
+        //         return true;
+        //     }
+        //     if (state)
+        //         hid.pressMedia(HID_USAGE_CONSUMER_PLAY_PAUSE);
+        //     return true;
             
         default: break;
         }

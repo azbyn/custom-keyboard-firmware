@@ -1,4 +1,6 @@
 #pragma once
+#include <string_view>
+
 #include <stdint.h>
 #include <tusb.h>
 
@@ -9,7 +11,6 @@ struct UsbCdc {
     // char commandBuffer[1024];
     // size_t cmdIdx = 0;
     FixedVector<char, 1024> commandBuffer;
-    bool _cdcEnabled = false;
     UsbCdc() {}
 public:
     static UsbCdc& getInstance(){
@@ -19,11 +20,12 @@ public:
     UsbCdc(const UsbCdc&) = delete;
     UsbCdc& operator=(const UsbCdc&) = delete;
 
-    bool isCdcEnabled() const {return _cdcEnabled; }
+    static constexpr bool isCdcEnabled() {return KeyboardStateMachine::getStateSnapshot().cdcEnabled; }
 
-    void setCdcEnabled(bool val) {
-        if (val == _cdcEnabled) return;
-        _cdcEnabled = val;
+    static void setCdcEnabled(bool val) {
+        auto& mss = KeyboardStateMachine::getMutableStateSnapshot();
+        if (val == mss.cdcEnabled) return;
+        mss.cdcEnabled = val;
         tud_disconnect();
         sleep_ms(100);   // Windows needs ~100ms, Linux/Mac are fine with less
         tud_connect();
@@ -67,6 +69,13 @@ public:
             tud_cdc_write_flush();
         }
 
+    }
+    
+    inline void print(std::string_view s) {
+        if (isCdcEnabled()) {
+            tud_cdc_write(s.data(), s.size());
+            tud_cdc_write_flush();
+        }
     }
 private:
 

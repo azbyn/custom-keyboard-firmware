@@ -18,7 +18,7 @@ constexpr uint8_t BOARD_TUD_RHPORT = 0;
 constexpr uint8_t REPORT_ID_KEYBOARD = 1;
 constexpr uint8_t REPORT_ID_CONSUMER_CONTROL = 2;
 
-constexpr size_t  KeyReportLength = 6; //can't be changed without also changing what functions we call & stuff
+#define HID_KEY_WILDCARD HID_KEY_F13
 
 #define HID_KEY_ERR_ROLLOVER 0x01
 //#define BOARD_TUD_RHPORT      0
@@ -35,12 +35,34 @@ void onKbdLedRequest(uint8_t state);
 
 //}
 
+#define MAX_KEY_BITMAP 0x63
+// constexpr size_t MAX_KEY_BITMAP = 0x63;// 0x6F;
+// 0x63;
+//0xDF;
+/*0x82*/
+
+struct NkroReport {
+    uint8_t modifiers;
+    uint8_t reserved;
+    BitArray<MAX_KEY_BITMAP> keys;
+
+    constexpr void addKeyToKeyreport(uint8_t keycode) {
+        if (keycode == 0) return;
+        this->keys.set(keycode, true);
+    }
+
+    constexpr void removeKeyFromKeyreport(uint8_t keycode) {
+        if (keycode == 0) return;
+        this->keys.set(keycode, false);
+    }
+};
+static_assert(sizeof(NkroReport) == decltype(NkroReport::keys)::sizeBytes()+2);
+
 //a singleton class is used here because i don't have to forward declare everything
 class UsbHid {
     FixedVector<KeyWithModifier, 512/*256*/> sequence_buffer;
+    NkroReport keyReport;
 
-    uint8_t modifiers = 0;
-    BitArray<0x63/*0x82*/> keys;
     bool sendingConsumerKey = false;
     //uint8_t keys[KeyReportLength];
     
@@ -56,6 +78,9 @@ class UsbHid {
     UsbHid() {}
 
 public:
+    static constexpr size_t keysNumBytes = decltype(NkroReport::keys)::sizeBytes();
+    static constexpr size_t keysNumKeys = decltype(NkroReport::keys)::sizeBits();
+
     static UsbHid& getInstance(){
         static UsbHid instance;
         return instance;
@@ -96,29 +121,32 @@ public:
     }
     void setModifierState(uint8_t modifier, bool state, bool _sendReport = true) {
         if (state)
-            this->modifiers |= modifier;
+            this->keyReport.modifiers |= modifier;
         else
-            this->modifiers &= ~modifier;
+            this->keyReport.modifiers &= ~modifier;
         if (_sendReport)
             sendReport(false);
     }
-    constexpr uint8_t getModifiers() const { return modifiers; }
+    constexpr uint8_t getModifiers() const { return keyReport.modifiers; }
     constexpr bool getShiftState() const { 
-        return modifiers & (KEYBOARD_MODIFIER_RIGHTSHIFT | KEYBOARD_MODIFIER_LEFTSHIFT ); 
+        return getModifiers() & (KEYBOARD_MODIFIER_RIGHTSHIFT | KEYBOARD_MODIFIER_LEFTSHIFT); 
     }
     constexpr bool getAltState() const {
-        return modifiers & (KEYBOARD_MODIFIER_RIGHTALT | KEYBOARD_MODIFIER_LEFTALT ); 
+        return getModifiers() & (KEYBOARD_MODIFIER_RIGHTALT | KEYBOARD_MODIFIER_LEFTALT);
     }
     constexpr bool getCtrlState() const {
-        return modifiers & (KEYBOARD_MODIFIER_RIGHTCTRL | KEYBOARD_MODIFIER_LEFTCTRL ); 
+        return getModifiers() & (KEYBOARD_MODIFIER_RIGHTCTRL | KEYBOARD_MODIFIER_LEFTCTRL);
+    }
+    constexpr bool getGuiState() const {
+        return getModifiers() & (KEYBOARD_MODIFIER_RIGHTGUI | KEYBOARD_MODIFIER_LEFTGUI);
     }
     
     void press(uint8_t key) {
-        addKeyToKeyreport(key);
+        keyReport.addKeyToKeyreport(key);
         sendReport(false);
     }
     void release(uint8_t key) {
-        removeKeyFromKeyreport(key);
+        keyReport.removeKeyFromKeyreport(key);
 
         sendReport(false);
     }
@@ -162,6 +190,19 @@ private:
         }
         return 0;
     }
+public:
+    constexpr static bool isNkro() { return KeyboardStateMachine::getStateSnapshot().nkro; }
+    static void setNkro(bool val) {
+        auto& mss = KeyboardStateMachine::getMutableStateSnapshot();
+        if (mss.nkro == val) return;
+        mss.nkro = val;
+
+        tud_disconnect();
+        sleep_ms(100);
+        tud_connect();
+
+        display_printf("NKRO_%d;", val);
+    } 
 public:
     bool sendUnicodeSequence(char16_t val, UnicodeInputMode mode) {
         // display_printf1("U+%04x;%d\n", val, sequence_buffer.size());
@@ -236,10 +277,17 @@ private:
         lastSendSeqMs = millis();
         
         if (sequence_buffer.empty()) return;
-
-
-        uint8_t keys[KeyReportLength] = {};
+    
         auto x = sequence_buffer.pop_front();
+
+        if (isNkro()) {
+            NkroReport rep;
+            rep.modifiers = x.modifiers;
+            rep.keys.set(x.key, true);
+            sendReport_nkro(rep, false);
+            return;
+        } 
+
 
         // Display::printf("S%d-", sequence_buffer.size());
         #if 0
@@ -253,13 +301,60 @@ private:
         }
         #endif
 
+        uint8_t keys[6] = {};
+
         keys[0] = x.key;
 
-        sendReport(x.modifiers, keys, false);
+        sendReport_6k(x.modifiers, keys, false);
     }
     int numSentRepeatedReport = 0;
+    void sendReport_nkro(const NkroReport& report, bool isRepeatedReport) {    
+        if (isRepeatedReport) {
+            ++this->numSentRepeatedReport;
+        } else {
+            numSentRepeatedReport = 0;
+        }
+        if (!isRepeatedReport) {
+            display_printf(
+                "(%s%s%s%s;",// ;%d]"
+                
+                // "%02x %02x %02x %02x %02x %02x\n",
+                (getCtrlState()  ? "c": ""),
+                (getShiftState() ? "S": ""),
+                (getAltState()   ? "a": ""),
+                (getGuiState()   ? "g": "")
 
-    void sendReport(uint8_t modifiers, const uint8_t* keys, bool isRepeatedReport) {    
+                // keys[0], keys[1], keys[2],
+                // keys[3], keys[4], keys[5]
+            );
+        }
+        // for (size_t i = 0; i < report.keys.sizeBits(); ++i) {
+        //     if (report.keys.get(i))
+        //         printKey(i);
+        // }
+        const uint8_t* x = reinterpret_cast<const uint8_t*>(&report);
+
+        cdc_print("[");
+        for (size_t i = 0; i < sizeof(report); ++i) {
+            cdc_printf("%02x", x[i]);
+            if (i % 4 == 3) 
+                cdc_print(" ");
+            // if (report.keys.get(i))
+        }
+        cdc_print("]\r\n");
+
+
+        bool ok = usbHidWorks() || KeyboardStateMachine::getStateSnapshot().sendCodesWhenKbdUnmounted;
+        if (isRepeatedReport && !ok) {
+            display_printf("SEND_REP_W_OFF");
+        }
+        if (!isRepeatedReport)
+            display_printf(";%d", ok);
+        if (!ok) return;
+
+        tud_hid_report(/*report_id*/REPORT_ID_KEYBOARD, &report, sizeof(report));
+    }
+    void sendReport_6k(uint8_t modifiers, const uint8_t* keys, bool isRepeatedReport) {    
         if (isRepeatedReport) {
             ++this->numSentRepeatedReport;
         } else {
@@ -289,25 +384,6 @@ private:
         if (!isRepeatedReport)
             display_printf(";%d", ok);
         if (!ok) return;
-
-        #if 0
-        display_printf(
-            "%c%c%c%c_%c%c%c%c\n"
-            "%02x %02x %02x %02x %02x %02x\n",
-            ((modifiers & KEYBOARD_MODIFIER_LEFTCTRL) ? 'c': '_'),
-            ((modifiers & KEYBOARD_MODIFIER_LEFTSHIFT) ? 's': '_'),
-            ((modifiers & KEYBOARD_MODIFIER_LEFTALT) ? 'a': '_'),
-            ((modifiers & KEYBOARD_MODIFIER_LEFTGUI) ? 'g': '_'),
-
-            ((modifiers & KEYBOARD_MODIFIER_RIGHTCTRL) ? 'C': '_'),
-            ((modifiers & KEYBOARD_MODIFIER_RIGHTSHIFT) ? 'S': '_'),
-            ((modifiers & KEYBOARD_MODIFIER_RIGHTALT) ? 'A': '_'),
-            ((modifiers & KEYBOARD_MODIFIER_RIGHTGUI) ? 'G': '_'),
-
-            keys[0], keys[1], keys[2],
-            keys[3], keys[4], keys[5]
-        );
-        #endif
         
         tud_hid_keyboard_report(REPORT_ID_KEYBOARD, modifiers, keys);
     }
@@ -328,6 +404,7 @@ public:
     // static void keyToStr(char* dst, size_t sz, uint8_t key) {
     static constexpr const char* maybeKeyToStr(uint8_t key) {
         switch (key) {
+        case HID_KEY_WILDCARD: return "Wild";
         case HID_KEY_A: return "A";
         case HID_KEY_B: return "B";
         case HID_KEY_C: return "C";
@@ -444,14 +521,18 @@ public:
         // if (buffer) 
     }
 public:
-    void sendReport(bool isDuplicate) {
-        FixedVector<uint8_t, KeyReportLength> keysReport;
+    void sendReport(bool isRepeatedReport) {
         
-        for (size_t i = 0; i < this->keys.actualCapacity(); ++i)  {
-            if (!this->keys.get(i)) continue;
+        if (isNkro()) {
+            return this->sendReport_nkro(this->keyReport, isRepeatedReport);
+        }
+        
+        FixedVector<uint8_t, 6> keysReport = {};
+        for (size_t i = 0; i < this->keyReport.keys.actualCapacity(); ++i)  {
+            if (!this->keyReport.keys.get(i)) continue;
             bool hasSpace = keysReport.push_back(i);
             if (!hasSpace) {
-                for (size_t j = 0; j < KeyReportLength; ++j) {
+                for (size_t j = 0; j < keysReport.size(); ++j) {
                     keysReport[j] = HID_KEY_ERR_ROLLOVER;
                 }
                 break;
@@ -459,54 +540,7 @@ public:
         }
 
        
-        this->sendReport(this->modifiers, keysReport.begin(), isDuplicate);
-    }
-private:
-    void addKeyToKeyreport(uint8_t keycode) {
-        if (keycode == 0) return;
-        this->keys.set(keycode, true);
-        #if 0
-        if (keycode == 0) {
-            /* not a key */
-            return;
-        }
-        for (uint8_t i=0; i<6; i++) {
-            if ( keys[i] == keycode ) {
-                /* key is already present, no need to add it */
-                return;
-            }
-        }
-        for (uint8_t i=0; i<6; i++) {
-            if ( keys[i] == 0 ) {
-                /* found an empty slot, add keycode */
-                keys[i] = keycode;
-                return;
-            }
-        }
-        /*
-            If code reaches this point, the keys array is full with other keys.
-            By spec this would prompt an error report.
-            We just ignore the additional key, effectively imposing a hard limit to 6 simultaneous keys + modifiers.
-        */
-       #endif
-    }
-
-    void removeKeyFromKeyreport(uint8_t keycode) {
-        if (keycode == 0) return;
-        this->keys.set(keycode, false);
-        #if 0
-        if (keycode == 0) {
-            /* not a key */
-            return;
-        }
-        for (uint8_t i=0; i<6; i++) {
-            if (keys[i] == keycode) {
-                /* found keycode in slot, remove */
-                keys[i] = 0;
-                return;
-            }
-        }
-        #endif
+        this->sendReport_6k(this->getModifiers(), keysReport.begin(), isRepeatedReport);
     }
 public:
     // Invoked when sent REPORT successfully to host
@@ -580,18 +614,5 @@ public:
             }
         }
     }
-public:
-//     void tud_mount_cb(void) {
-//         this->usbWorks = true;
-//     // USB connected and configured
-// }
-// void tud_umount_cb(void) {
-//     this->usbWorks = true;
-//     // USB disconnected
-// }
-
-
 };
 
-//todo handle tud_hid_set_protocol_cb to handle nkro
-//and

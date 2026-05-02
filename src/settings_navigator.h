@@ -6,6 +6,7 @@
 #include <hardware/watchdog.h>
 
 #include "usb_cdc.h"
+#include "usb_hid.h"
 
 struct SettingItem {
     const char* name;
@@ -38,7 +39,18 @@ struct SettingItem {
             return _what ? "on" : "off";\
         }\
     })
-
+#define BOOL_SETTING_GETTER_SETTER(_name, _get, _set) \
+    (SettingItem { \
+        .name = _name, \
+        .move = [] ( [[maybe_unused]] int value, [[maybe_unused]] KeyboardStateSnapshot& s) { \
+            /*if (value < 0) return;*/\
+            _set(!_get());\
+        },\
+        .getValName = [] ([[maybe_unused]] const KeyboardStateSnapshot& s) {\
+            return (_get()) ? "on" : "off";\
+        }\
+    })
+    
 #define ACTION_SETTING(_name, _action) \
     (SettingItem {\
         .name = _name,\
@@ -103,25 +115,6 @@ constexpr SettingItem setting = {
 };
 
 };*/
-
-namespace CdcSetting {
-
-
-constexpr SettingItem setting = {
-    .name = "Serial",
-    .move = [] (int value, KeyboardStateSnapshot&)  {
-        (void) value;
-        auto& cdc = UsbCdc::getInstance();
-        cdc.setCdcEnabled(!cdc.isCdcEnabled());
-    },
-    .getValName = [](const KeyboardStateSnapshot&)  {
-        auto& cdc = UsbCdc::getInstance();
-        return cdc.isCdcEnabled() ? "on" : "off";
-    }
-};
-
-};
-
 
 
 
@@ -238,10 +231,12 @@ public:
         MusicNumSetting::setting,
         
         ACTION_SETTING("Restart", {watchdog_reboot(0,0,0);}),
-        ACTION_SETTING("Debug Log", { s.state = DS_Debug; }),
         ACTION_SETTING("Keybindings Show", { s.state = DS_ShowBindings;}),
 
-        CdcSetting::setting,
+        BOOL_SETTING_GETTER_SETTER("Serial", UsbCdc::isCdcEnabled, UsbCdc::setCdcEnabled),
+        BOOL_SETTING_GETTER_SETTER("Nkro", UsbHid::isNkro, UsbHid::setNkro),
+
+        ACTION_SETTING("Debug Log", { s.state = DS_Debug; }),
         ACTION_SETTING("Enter Bootloader", { reset_usb_boot(0,0); }),
         ACTION_SETTING("Back", { s.state = DS_Normal;}),
     };

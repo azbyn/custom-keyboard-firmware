@@ -13,6 +13,14 @@ gen_cmake:
 serial:
 	minicom -D /dev/ttyACM0
 
+.PHONY: descriptor
+descriptor:
+	sudo usbhid-dump -d 415a -e descriptor
+
+.PHONY: hid-data
+hid-data:
+	sudo usbhid-dump -d 415a -f -e stream
+
 
 .PHONY: build
 build:

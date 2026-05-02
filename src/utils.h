@@ -1,4 +1,5 @@
 #pragma once
+#include <string_view>
 #include <pico/stdlib.h>
 #include <hardware/gpio.h>
 
@@ -55,6 +56,21 @@ inline void display_printf(const char* fmt, Args&&... args) {
 inline void display_printf(const char* fmt) {
     return display_print(fmt);
 }
+
+//defined in main.cpp
+void cdc_print(std::string_view s);
+
+template <typename... Args>
+inline void cdc_printf(const char* fmt, Args&&... args) {
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer), fmt, std::forward<Args>(args)...);
+    cdc_print(buffer);
+}
+inline void cdc_printf(std::string_view s) {
+    return cdc_print(s);
+}
+
+
 
 // inline bool digitalRead(Pin ulPin) {
 //     return gpio_get();

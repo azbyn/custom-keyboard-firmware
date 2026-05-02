@@ -103,7 +103,7 @@ uint8_t const * tud_descriptor_device_cb(void) {
 // HID Report Descriptor
 //--------------------------------------------------------------------+
 
-constexpr uint8_t desc_hid_report[] = {
+constexpr uint8_t desc_hid_report_6key[] = {
     HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )                    ,
     HID_USAGE      ( HID_USAGE_DESKTOP_KEYBOARD )                    ,
     HID_COLLECTION ( HID_COLLECTION_APPLICATION )                    ,
@@ -139,9 +139,64 @@ constexpr uint8_t desc_hid_report[] = {
             HID_USAGE_MAX_N  ( 255, 2                              )     ,
             HID_LOGICAL_MIN  ( 0                                   )     ,
             HID_LOGICAL_MAX_N( 255, 2                              )     ,
-            HID_REPORT_COUNT ( KeyReportLength /*6*/               )     ,
-            HID_REPORT_SIZE  ( KeyReportLength +2 /*8*/            )     ,
+            HID_REPORT_COUNT ( 6               )     ,
+            HID_REPORT_SIZE  ( 8               )     ,
             HID_INPUT        ( HID_DATA | HID_ARRAY | HID_ABSOLUTE )     ,
+        HID_COLLECTION_END ,
+        TUD_HID_REPORT_DESC_CONSUMER( HID_REPORT_ID(REPORT_ID_CONSUMER_CONTROL )),
+
+    //TUD_HID_REPORT_DESC_KEYBOARD( HID_REPORT_ID(REPORT_ID_KEYBOARD         )),
+    /*TUD_HID_REPORT_DESC_MOUSE   ( HID_REPORT_ID(REPORT_ID_MOUSE            )),
+    TUD_HID_REPORT_DESC_GAMEPAD ( HID_REPORT_ID(REPORT_ID_GAMEPAD          ))*/
+};
+
+constexpr uint8_t desc_hid_report_nkro[] = {
+    HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )                    ,
+    HID_USAGE      ( HID_USAGE_DESKTOP_KEYBOARD )                    ,
+    HID_COLLECTION ( HID_COLLECTION_APPLICATION )                    ,
+        /* Report ID  */
+        HID_REPORT_ID(REPORT_ID_KEYBOARD         )
+        /* 8 bits Modifier Keys (Shift, Control, Alt) */ 
+        HID_USAGE_PAGE ( HID_USAGE_PAGE_KEYBOARD )                     ,
+            HID_USAGE_MIN    ( 224                                    )  ,
+            HID_USAGE_MAX    ( 231                                    )  ,
+            HID_LOGICAL_MIN  ( 0                                      )  ,
+            HID_LOGICAL_MAX  ( 1                                      )  ,
+            HID_REPORT_COUNT ( 8                                      )  ,
+            HID_REPORT_SIZE  ( 1                                      )  ,
+            HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE )  ,
+            /* 8 bit reserved */ 
+            HID_REPORT_COUNT ( 1                                      )  ,
+            HID_REPORT_SIZE  ( 8                                      )  ,
+            HID_INPUT        ( HID_CONSTANT                           )  ,
+        /* Output 5-bit LED Indicator Kana | Compose | ScrollLock | CapsLock | NumLock */ 
+        HID_USAGE_PAGE  ( HID_USAGE_PAGE_LED                   )       ,
+            HID_USAGE_MIN    ( 1                                       ) ,
+            HID_USAGE_MAX    ( 5                                       ) ,
+            HID_REPORT_COUNT ( 5                                       ) ,
+            HID_REPORT_SIZE  ( 1                                       ) ,
+            HID_OUTPUT       ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE  ) ,
+            /* led padding */ 
+            HID_REPORT_COUNT ( 1                                       ) ,
+            HID_REPORT_SIZE  ( 3                                       ) ,
+            HID_OUTPUT       ( HID_CONSTANT                            ) ,
+        /* Bitmap of  Keycodes */ 
+        HID_USAGE_PAGE ( HID_USAGE_PAGE_KEYBOARD )                     ,
+            HID_USAGE_MIN    ( 0                                   )     ,
+            HID_USAGE_MAX    ( UsbHid::keysNumKeys             )     ,
+
+            // HID_USAGE_MAX_N  ( 255, 2                              )     ,
+            HID_LOGICAL_MIN  ( 0                                   )     ,
+            HID_LOGICAL_MAX  ( 1                              )     ,
+            HID_REPORT_COUNT ( UsbHid::keysNumKeys+1                )     ,
+            HID_REPORT_SIZE  ( 1 /*8*/            )     ,
+            HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE )     ,
+#if (MAX_KEY_BITMAP % 8) != 0
+            /* hid padding */ 
+            HID_REPORT_COUNT ( 1                                       ) ,
+            HID_REPORT_SIZE  ( (7 - (UsbHid::keysNumKeys%8))           ) ,
+            HID_INPUT       ( HID_CONSTANT                            ) ,
+#endif
         HID_COLLECTION_END ,
         TUD_HID_REPORT_DESC_CONSUMER( HID_REPORT_ID(REPORT_ID_CONSUMER_CONTROL )),
 
@@ -154,14 +209,20 @@ constexpr uint8_t desc_hid_report[] = {
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance) {
-  (void) instance;
-  return desc_hid_report;
+    (void) instance;
+    return KeyboardStateMachine::getStateSnapshot().nkro ?
+        desc_hid_report_nkro : desc_hid_report_6key;
 }
 
 //--------------------------------------------------------------------+
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 constexpr size_t expectedCurrCons = 100;//mA
+
+template<typename T, typename... Args>
+auto make_array(Args&&... args) -> std::array<T, sizeof...(Args)> {
+    return {static_cast<T>(args)...};
+}
 
 namespace ConfigurationDescriptorWithCdc {
     enum {
@@ -173,36 +234,39 @@ namespace ConfigurationDescriptorWithCdc {
 
     static constexpr size_t CONFIG_TOTAL_LEN = (TUD_CONFIG_DESC_LEN +TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN);
 
-    static constexpr uint8_t const desc_configuration[] = {
-        TUD_CONFIG_DESCRIPTOR(
-            1, // Config number
-            ITF_NUM_TOTAL, //interface count,
-            0, //string index,
-            CONFIG_TOTAL_LEN, // total length,
-            TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, //attr
-            expectedCurrCons//power in mA
-        ),
-            
-        TUD_CDC_DESCRIPTOR(
-            ITF_NUM_CDC, //ift_num
-            STRID_CDC_INTERFACE,//strid
-            EP_CDC_NOTIF, //ep_notif
-            8, //ep_notif_size,
-            EP_CDC_OUT, //ep_out
-            EP_CDC_IN, //ep_in
-            64 //ep_size
-        ),
+#define M(descriptor) {\
+    TUD_CONFIG_DESCRIPTOR(\
+        1, /* Config number*/\
+        ITF_NUM_TOTAL, /*interface count*/\
+        0, /*string index,*/\
+        CONFIG_TOTAL_LEN, /* total length, */\
+        TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, /*attr*/ \
+        expectedCurrCons/*power in mA*/ \
+    ),\
+    TUD_CDC_DESCRIPTOR(\
+        ITF_NUM_CDC, /*ift_num*/ \
+        STRID_CDC_INTERFACE,/*strid*/ \
+        EP_CDC_NOTIF, /*ep_notif*/ \
+        8, /*ep_notif_size,*/ \
+        EP_CDC_OUT, /*ep_out*/ \
+        EP_CDC_IN, /*ep_in*/ \
+        64 /*ep_size*/ \
+    ),\
+    TUD_HID_DESCRIPTOR(\
+        ITF_NUM_HID, /* Interface number, */ \
+        STRID_HID_INTERFACE, /*string index,*/ \
+        HID_ITF_PROTOCOL_NONE, /*protocol*/ \
+        sizeof(descriptor), /*report descriptor len,*/ \
+        EP_HID, /* EP In address,*/ \
+        CFG_TUD_HID_EP_BUFSIZE,/*size*/ \
+        1/* polling interval in ms*/ \
+    )}
 
-        TUD_HID_DESCRIPTOR(
-            ITF_NUM_HID, // Interface number, 
-            STRID_HID_INTERFACE, //string index,
-            HID_ITF_PROTOCOL_NONE, //protocol
-            sizeof(desc_hid_report), //report descriptor len,
-            EP_HID, // EP In address,
-            CFG_TUD_HID_EP_BUFSIZE,//size
-            1// polling interval in ms
-        )
-    };
+constexpr uint8_t const desc_configuration_nkro[] = M(desc_hid_report_nkro);
+constexpr uint8_t const desc_configuration_6kro[] = M(desc_hid_report_6key);
+
+#undef M
+
 };
 
 
@@ -213,27 +277,29 @@ namespace ConfigurationDescriptorWithoutCdc {
     };
     static constexpr size_t CONFIG_TOTAL_LEN = (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN);
 
-
-    static constexpr uint8_t const desc_configuration[] = {
-        TUD_CONFIG_DESCRIPTOR(
-            1, // Config number
-            ITF_NUM_TOTAL, //interface count,
-            0, //string index,
-            CONFIG_TOTAL_LEN, // total length,
-            TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, //attr
-            expectedCurrCons//power in mA
-        ),
-
-        TUD_HID_DESCRIPTOR(
-            ITF_NUM_HID, // Interface number, 
-            STRID_HID_INTERFACE, //string index,
-            HID_ITF_PROTOCOL_NONE, //protocol
-            sizeof(desc_hid_report), //report descriptor len,
-            EP_HID, // EP In address,
-            CFG_TUD_HID_EP_BUFSIZE,//size
-            1// polling interval in ms
-        )
-    };
+#define M(descriptor) {\
+    TUD_CONFIG_DESCRIPTOR(\
+        1, /* Config number*/ \
+        ITF_NUM_TOTAL, /*interface count,*/ \
+        0, /*string index,*/ \
+        CONFIG_TOTAL_LEN, /* total length,*/ \
+        TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, /*attr*/ \
+        expectedCurrCons/*power in mA*/ \
+    ),\
+\
+    TUD_HID_DESCRIPTOR(\
+        ITF_NUM_HID, /* Interface number, */ \
+        STRID_HID_INTERFACE, /*string index,*/ \
+        HID_ITF_PROTOCOL_NONE, /*protocol*/ \
+        sizeof(descriptor), /*report descriptor len,*/ \
+        EP_HID, /* EP In address,*/ \
+        CFG_TUD_HID_EP_BUFSIZE,/*size*/ \
+        1/* polling interval in ms*/ \
+    )}
+    
+constexpr uint8_t const desc_configuration_nkro[] = M(desc_hid_report_nkro);
+constexpr uint8_t const desc_configuration_6kro[] = M(desc_hid_report_6key);
+#undef M
 };
 
 
@@ -293,9 +359,19 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index) {
     (void) index; // for multiple configurations
 
     // This example use the same configuration for both high and full speed mode
-    return UsbCdc::getInstance().isCdcEnabled() ? 
-        ConfigurationDescriptorWithCdc::desc_configuration:
-        ConfigurationDescriptorWithoutCdc::desc_configuration;
+    bool nkro = KeyboardStateMachine::getStateSnapshot().nkro;
+    if (UsbCdc::getInstance().isCdcEnabled())
+        return nkro ? ConfigurationDescriptorWithCdc::desc_configuration_nkro : ConfigurationDescriptorWithCdc::desc_configuration_6kro;
+    return nkro ? ConfigurationDescriptorWithoutCdc::desc_configuration_nkro : ConfigurationDescriptorWithoutCdc::desc_configuration_6kro;
+}
+
+void tud_hid_set_protocol_cb(uint8_t instance, uint8_t protocol) {
+    (void) instance;
+    //can modify it the raw way, since it's called before the descriptor is requested
+    if (protocol == HID_PROTOCOL_BOOT) 
+        KeyboardStateMachine::getMutableStateSnapshot().nkro = false;
+    if (protocol == HID_PROTOCOL_REPORT) 
+        KeyboardStateMachine::getMutableStateSnapshot().nkro = true;
 }
 
 static uint16_t _desc_str[32 + 1];

@@ -82,10 +82,9 @@ constexpr KeyAction KA_Lambda(void (*val)(KeyboardStateMachine&), const char* he
 #define HID_KEY_REALRALT  HID_KEY_F14
 
 #define HID_KEY_SPC   HID_KEY_SPACE
-#define HID_KEY_WILDCARD  HID_KEY_F13
 
-#define HID_USAGE_CONSUMER_FAST_FORWARD 0x00B3
-#define HID_USAGE_CONSUMER_REWIND 0x00B4
+// #define HID_USAGE_CONSUMER_FAST_FORWARD 0x00B3
+// #define HID_USAGE_CONSUMER_REWIND 0x00B4
 
 
 
@@ -102,7 +101,7 @@ constexpr uint8_t keys[pins::rowLen][18] = {
     R(TAB,        Q,    W,     E,  R,  T,   Y,  U,  I,     O,      P,            BRACKET_LEFT,  BRACKET_RIGHT, BACKSLASH,             DELETE,       KEYPAD_7,        KEYPAD_8,      KEYPAD_9),
     R(GUI_LEFT,   A,    S,     D,  F,  G,   H,  J,  K,     L,      SEMICOLON,    APOSTROPHE,    _,             ENTER,                 WILDCARD,     KEYPAD_4,        KEYPAD_5,      KEYPAD_6),
     R(SHIFT_LEFT, Z,    X,     C,  V,  B,   N,  M,  COMMA, PERIOD, SLASH,        _,             SHIFT_RIGHT,   ARROW_UP,              _,            KEYPAD_1,        KEYPAD_2,      KEYPAD_3),
-    R(RCTRL,      LALT, LCTRL, _,  _,  SPC, _,  _,  _,     RALT,   FN,           REALRALT,      ARROW_LEFT,    ARROW_DOWN,            ARROW_RIGHT,  KEYPAD_0,        _,             KEYPAD_DECIMAL),
+    R(RCTRL,      LALT, LCTRL, _,  _,  SPC, _,  _,  _,     RALT,   FN,           RCTRL,         ARROW_LEFT,    ARROW_DOWN,            ARROW_RIGHT,  KEYPAD_0,        _,             KEYPAD_DECIMAL),
 };
 #undef R
 
@@ -205,6 +204,8 @@ constexpr std::array<std::array<KeyAction, 0x10>, 0x4F> winKeyActions = ([]() {
     // res[HID_KEY_R][SHIFT|ALT] = KA_Lambda([](KeyboardStateMachine&) {
     //     watchdog_reboot(0,0,0);
     // });
+    res[HID_KEY_WILDCARD][0] = KA_KeyWithModifier({KEYBOARD_MODIFIER_RIGHTALT, 0}, "RAlt");
+
     res[HID_KEY_R][0] = KA_Lambda([] (KeyboardStateMachine& sm) {
         sm.toggleRuskiMode();
     }, "Ruski");
