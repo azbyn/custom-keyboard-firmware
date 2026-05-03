@@ -27,9 +27,9 @@ public:
         if (val == mss.cdcEnabled) return;
         mss.cdcEnabled = val;
         tud_disconnect();
-        sleep_ms(100);   // Windows needs ~100ms, Linux/Mac are fine with less
+        sleep_ms(100);
         tud_connect();
-        display_printf("CDC_%d;", val);
+        display_print("CDC_{};", (int)val);
     }
 
     // void update() {
@@ -77,19 +77,21 @@ public:
             tud_cdc_write_flush();
         }
     }
-private:
-
-    template <typename... Args>
-    inline void printf(const char* fmt, Args&&... args) {
-        char buffer[1024];
-        int count = snprintf(buffer, sizeof(buffer), fmt, std::forward<Args>(args)...);
-        display_printf(buffer);
-
+    inline void putc(char c) {
         if (isCdcEnabled()) {
-            tud_cdc_write(buffer, count);
+            tud_cdc_write(&c, 1);
             tud_cdc_write_flush();
         }
     }
+private:
+
+  
+
+    template <typename... Args>
+    static void print(std::format_string<Args...> fmt, Args&&... args) {
+        std::format_to(DisplayCharSink{}, fmt, std::forward<Args>(args)...);
+    }
+
     bool overflowed = false;
     void push_n(const char* ptr, size_t sz) {
         // printf("Push_%lu %x '%.*s'", sz, *ptr, sz, ptr);

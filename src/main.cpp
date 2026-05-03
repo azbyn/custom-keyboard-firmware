@@ -11,7 +11,17 @@
 #include "keyboard_logic.h"
 #include "usb_cdc.h"
 
-void display_print(const char* fmt) {
+DisplayCharSink& DisplayCharSink::operator=(char c) {
+    Display::getInstance().putc(c);
+    return *this;
+}
+CdcCharSink& CdcCharSink::operator=(char c) {
+    UsbCdc::getInstance().putc(c);
+    return *this;
+}
+
+
+void display_print(std::string_view fmt) {
     Display::getInstance().print(fmt);
 }
 void cdc_print(std::string_view s) {

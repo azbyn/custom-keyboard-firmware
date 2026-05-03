@@ -51,11 +51,12 @@ public:
         lcd.end_draw();
     }
     //call with mutex locked
-    void print(const char* x) {
-        while (*x)
-            putc(*x++);
+    void print(std::string_view x) {// const char* x) {
+        for (char c : x) putc(c);
+        // while (*x)
+            // putc(*x++);
     }
-private:
+//private:
 
     void putc(char c) {
         if (cursor >= buffer_w * buffer_h - 1) {
@@ -72,6 +73,7 @@ private:
 
         buffer[cursor++] = c;
     }
+private:
     void advance_line() {
         int i = 0;
         //move output one line higher;

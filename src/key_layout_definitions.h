@@ -190,8 +190,8 @@ constexpr std::array<UnicodeKeyActions, 0x39> unicodeKeyActions = ([]() {
 })();
 
 
-constexpr std::array<std::array<KeyAction, 0x10>, 0x4F> winKeyActions = ([]() {
-    std::array<std::array<KeyAction, 0x10>, 0x4F> res;
+constexpr std::array<std::array<KeyAction, 0x10>, HID_KEY_F13+1> winKeyActions = ([]() {
+    std::array<std::array<KeyAction, 0x10>, HID_KEY_F13+1> res;
 
     
     [[maybe_unused]] constexpr uint8_t KM_WIN   = KEYBOARD_MODIFIER_LEFTGUI;

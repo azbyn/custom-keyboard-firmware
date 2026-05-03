@@ -373,11 +373,11 @@ private:
                 return false;
 
             auto val = unicodeKey.get(shiftMode, stateMachine.raltMode, stateMachine.getRuskiMode());
-            if (state) {
-                Display::printf("rk_");
-                hid.printKey(key);
-                Display::printf("->%04x;%d\n", val, hid.seq_buffer_size());
-            }
+            // if (state) {
+                // Display::printf("rk_");
+                // hid.printKey(key);
+                // Display::printf("->%04x;%d\n", val, hid.seq_buffer_size());
+            // }
 
             // Display::printf("\n");
             if (!val) return false;

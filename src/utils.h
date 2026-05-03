@@ -4,6 +4,7 @@
 #include <hardware/gpio.h>
 
 #include <utility> //std::forward
+#include <format>
 #include <stdio.h> //snprintf
 
 #include "pins.h"
@@ -44,34 +45,39 @@ inline uint32_t millis() {
     return to_ms_since_boot(get_absolute_time());
 }
 
-//defined in main.cpp
-void display_print(const char* fmt);
 
-template <typename... Args>
-inline void display_printf(const char* fmt, Args&&... args) {
-    char buffer[256];
-    snprintf(buffer, sizeof(buffer), fmt, std::forward<Args>(args)...);
-    display_print(buffer);
-}
-inline void display_printf(const char* fmt) {
-    return display_print(fmt);
-}
+struct DisplayCharSink {
+    using difference_type = ptrdiff_t;
 
+    DisplayCharSink& operator*() { return *this; }
+    DisplayCharSink& operator++() { return *this; }
+    DisplayCharSink& operator++(int) { return *this; }
+
+    //defined in main.cpp
+    DisplayCharSink& operator=(char c);
+};
+struct CdcCharSink {
+    using difference_type = ptrdiff_t;
+
+    CdcCharSink& operator*() { return *this; }
+    CdcCharSink& operator++() { return *this; }
+    CdcCharSink& operator++(int) { return *this; }
+    
+    //defined in main.cpp
+    CdcCharSink& operator=(char c);
+};
 //defined in main.cpp
 void cdc_print(std::string_view s);
 
 template <typename... Args>
-inline void cdc_printf(const char* fmt, Args&&... args) {
-    char buffer[1024];
-    snprintf(buffer, sizeof(buffer), fmt, std::forward<Args>(args)...);
-    cdc_print(buffer);
-}
-inline void cdc_printf(std::string_view s) {
-    return cdc_print(s);
+static void cdc_print(std::format_string<Args...> fmt, Args&&... args) {
+    std::format_to(CdcCharSink{}, fmt, std::forward<Args>(args)...);
 }
 
+//defined in main.cpp
+void display_print(std::string_view fmt);
 
-
-// inline bool digitalRead(Pin ulPin) {
-//     return gpio_get();
-// }
+template <typename... Args>
+static void display_print(std::format_string<Args...> fmt, Args&&... args) {
+    std::format_to(DisplayCharSink{}, fmt, std::forward<Args>(args)...);
+}

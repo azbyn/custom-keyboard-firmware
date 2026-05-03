@@ -2,7 +2,10 @@
 
 // #include <stdlib.h>
 #include <utility> //std::forward
+#include <format>
+
 #include <stdio.h> //snprintf
+#include <stddef.h> //ptrdiff_t
 
 #include <stdint.h>
 // #include <hardware/spi.h>
@@ -22,10 +25,9 @@
 #include "mode_displays/menu_mode_displayer.h"
 #include "mode_displays/show_bindings_mode_displayer.h"
 
-
 #include "utils.h"
 
-
+// #include "usb_cdc.h"
 
 class Display {
     St7789 lcd;
@@ -82,20 +84,31 @@ public:
         ++dirtiness;
         mutex_exit(&bufferMutex);
     }
-    void print(const char* x) {
+    void _print(std::string_view x) {
         mutex_enter_blocking(&bufferMutex);
         this->debugMsgDisplayer.print(x);
         ++dirtiness;
         mutex_exit(&bufferMutex);
+        // UsbCdc::print(x);
     }
+    void putc(char x) {
+        mutex_enter_blocking(&bufferMutex);
+        this->debugMsgDisplayer.putc(x);
+        ++dirtiness;
+        mutex_exit(&bufferMutex);
+        // UsbCdc::print(x);
+    }
+   
+
     template <typename... Args>
-    static void printf(const char* fmt, Args&&... args) {
-        char buffer[256];
-        snprintf(buffer, sizeof(buffer), fmt, std::forward<Args>(args)...);
-        getInstance().print(buffer);
+    static void print(std::format_string<Args...> fmt, Args&&... args) {
+        std::format_to(DisplayCharSink{}, fmt, std::forward<Args>(args)...);
     }
-    static void printf(const char* fmt) {
-        getInstance().print(fmt);
+    // static void print(const char* x) {
+    //     getInstance().print(x);
+    // }
+    static void print(std::string_view x) {
+        getInstance()._print(x);
     }
     void showKeybindingsUp() {
         showBindingsModeDisplayer.up();

@@ -399,7 +399,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 
             if ( !(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0])) ) return NULL;
             if (index > 10)
-                display_printf("W?DESC_%d;", index);
+                display_print("W?DESC_{};", index);
 
             const char *str = string_desc_arr[index];
 
@@ -426,11 +426,11 @@ void tud_mount_cb(void) {
 
     // KeyboardStateMachine::getInstance().onUsbSuspendMode(false);
 
-    display_printf("mount");
+    display_print("mount");
 }
 void tud_umount_cb(void) {
     KeyboardStateMachine::getInstance().onUsbMount(false);
-    display_printf("unmount");
+    display_print("unmount");
 
     UsbHid::getInstance().mountState = UsbHid::S_Off;
 }
@@ -440,13 +440,13 @@ void tud_umount_cb(void) {
 // Within 7ms, device must draw an average of current less than 2.5 mA from bus
 void tud_suspend_cb(bool remote_wakeup_en) {
     KeyboardStateMachine::getInstance().onUsbSuspendMode(true);
-    display_printf("SUSP_%d", remote_wakeup_en);
+    display_print("SUSP_%d", remote_wakeup_en);
 
     UsbHid::getInstance().mountState = remote_wakeup_en ? UsbHid::S_SuspendedWakeable : UsbHid::S_SuspendedUnwakeable;
 }
 void tud_resume_cb(void) {
     KeyboardStateMachine::getInstance().onUsbSuspendMode(false);
-    display_printf("RESUME");
+    display_print("RESUME");
     UsbHid::getInstance().mountState = tud_mounted() ? UsbHid::S_On : UsbHid::S_Unmounted;
 
     // KeyboardStateMachine::setDisplayState(DS_OFF);

@@ -201,7 +201,7 @@ public:
         sleep_ms(100);
         tud_connect();
 
-        display_printf("NKRO_%d;", val);
+        display_print("NKRO_{};", val);
     } 
 public:
     bool sendUnicodeSequence(char16_t val, UnicodeInputMode mode) {
@@ -315,8 +315,8 @@ private:
             numSentRepeatedReport = 0;
         }
         if (!isRepeatedReport) {
-            display_printf(
-                "(%s%s%s%s;",// ;%d]"
+            display_print(
+                "({}{}{}{};",// ;%d]"
                 
                 // "%02x %02x %02x %02x %02x %02x\n",
                 (getCtrlState()  ? "c": ""),
@@ -336,7 +336,7 @@ private:
 
         cdc_print("[");
         for (size_t i = 0; i < sizeof(report); ++i) {
-            cdc_printf("%02x", x[i]);
+            cdc_print("{:02x}", x[i]);
             if (i % 4 == 3) 
                 cdc_print(" ");
             // if (report.keys.get(i))
@@ -346,10 +346,10 @@ private:
 
         bool ok = usbHidWorks() || KeyboardStateMachine::getStateSnapshot().sendCodesWhenKbdUnmounted;
         if (isRepeatedReport && !ok) {
-            display_printf("SEND_REP_W_OFF");
+            display_print("SEND_REP_W_OFF");
         }
         if (!isRepeatedReport)
-            display_printf(";%d", ok);
+            display_print(";{}", (int)ok);
         if (!ok) return;
 
         tud_hid_report(/*report_id*/REPORT_ID_KEYBOARD, &report, sizeof(report));
@@ -361,8 +361,8 @@ private:
             numSentRepeatedReport = 0;
         }
         if (!isRepeatedReport) {
-            display_printf(
-                "(%s%s%s%s;",// ;%d]"
+            display_print(
+                "({}{}{}{};",// ;%d]"
                 // "%02x %02x %02x %02x %02x %02x\n",
                 ((modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL)) ? "c": ""),
                 ((modifiers & (KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT)) ? "S": ""),
@@ -379,10 +379,10 @@ private:
 
         bool ok = usbHidWorks() || KeyboardStateMachine::getStateSnapshot().sendCodesWhenKbdUnmounted;
         if (isRepeatedReport && !ok) {
-            display_printf("SEND_REP_W_OFF");
+            display_print("SEND_REP_W_OFF");
         }
         if (!isRepeatedReport)
-            display_printf(";%d", ok);
+            display_print(";{}", (int)ok);
         if (!ok) return;
         
         tud_hid_keyboard_report(REPORT_ID_KEYBOARD, modifiers, keys);
@@ -515,7 +515,7 @@ public:
     static void printKey(uint8_t key) {
         const char* maybeKey = maybeKeyToStr(key);
         if (!maybeKey)
-            display_printf("%02x", key);
+            display_print("{:02x}", key);
         else   
             display_print(maybeKey);
         // if (buffer) 
