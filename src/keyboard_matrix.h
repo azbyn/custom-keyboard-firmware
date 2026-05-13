@@ -12,10 +12,10 @@ enum KeyState {
 };
 struct KeyPosition {
     size_t col, row;
-    constexpr bool operator==(const KeyPosition& rhs) {
+    constexpr bool operator==(const KeyPosition& rhs) const {
         return this->row == rhs.row && this->col == rhs.col;
     }
-    constexpr bool operator!=(const KeyPosition& rhs) {
+    constexpr bool operator!=(const KeyPosition& rhs) const {
         return this->row != rhs.row || this->col != rhs.col;
     }
 };
@@ -124,7 +124,7 @@ public:
                 // #pragma GCC diagnostic push
                 // #pragma GCC diagnostic ignored "-Waggressive-loop-optimizations"
 
-                auto colPin = pins::colPins[r];
+                auto colPin = pins::colPins[c];
                 // pinMode_input_pullup(rowPin);
                 newState[c * pins::rowLen + r] = !gpio_get(colPin);
                 // pinMode_input(rowPin);
@@ -150,7 +150,7 @@ public:
                 auto prev = prevState[i];
                 auto now  = newState[i];
 
-                if (prev != now && timeNow >= prevKeyTimes[i] + DebounceTimeMs) {
+                if (prev != now && (timeNow - prevKeyTimes[i]) >= DebounceTimeMs) {
                     has_update = true;
                     prevKeyTimes[i] = timeNow;
                     onKeypress({.col=c, .row=r}, now ? PRESSED : RELEASED);

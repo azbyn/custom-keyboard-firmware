@@ -85,12 +85,6 @@ public:
     }
 private:
 
-  
-
-    template <typename... Args>
-    static void print(std::format_string<Args...> fmt, Args&&... args) {
-        std::format_to(DisplayCharSink{}, fmt, std::forward<Args>(args)...);
-    }
 
     bool overflowed = false;
     void push_n(const char* ptr, size_t sz) {
@@ -109,8 +103,9 @@ private:
             overflowed = false;
             return;
         }
+        std::string_view sv = std::string_view(commandBuffer.data(), commandBuffer.size());
 
-        printf("\r\nEval '%.*s'\r\n", commandBuffer.size(),  commandBuffer.begin());
+        cdc_print("\nEval '{}'\n", sv);
         commandBuffer.clear();
     }
     void onOverflow() {

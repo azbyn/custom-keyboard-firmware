@@ -24,9 +24,9 @@ void tud_cdc_rx_cb(uint8_t itf) {
     UsbCdc::getInstance().tud_cdc_rx_cb(itf);
 }
 
-RepeatReportType UsbHid::getRepeatReportType() const {
-    return KeyboardStateMachine::getStateSnapshot().repeatReportType;
-}
+// RepeatReportType UsbHid::getRepeatReportType() const {
+//     return KeyboardStateMachine::getStateSnapshot().repeatReportType;
+// }
 
 
 

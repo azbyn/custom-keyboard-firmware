@@ -41,7 +41,10 @@ public:
         return instance;
     }
     KeyboardLogic(const KeyboardLogic&) = delete;
-    KeyboardLogic& operator=(const KeyboardLogic&) = default;
+    KeyboardLogic& operator=(const KeyboardLogic&) = delete;
+    KeyboardLogic(KeyboardLogic&&) = delete;
+    KeyboardLogic& operator=(KeyboardLogic&&) = delete;
+
     void init() {
         encoder.init();
         encoderBtn.init();
@@ -97,10 +100,11 @@ public:
             } else if (encVal > 0) {
                 hid.pressMedia(HID_USAGE_CONSUMER_VOLUME_INCREMENT);
             } 
-            if (encDown)
+            if (encDown) {
                 stateMachine.setDisplayState(DS_Menu);
 
                 // reset_usb_boot(0,0);
+            }
 
             break;
         };
@@ -132,7 +136,7 @@ public:
         keys.push_back({0, 0});
 
         UsbHid& hid = UsbHid::getInstance();
-        hid.sendSequence(keys.begin(), keys.size());
+        hid.sendSequence(keys.data(), keys.size());
     }
 
     void onKeypress(KeyPosition pos, KeyState state) {
@@ -165,6 +169,7 @@ public:
 private:
     // return true if handled here
     bool handleSpecialKeypress(uint8_t key, KeyState state) { 
+#if 0
         if (stateMachine.getDisplayState() == DS_Menu) {
             switch (key) {
             case HID_KEY_ESCAPE: 
@@ -212,6 +217,7 @@ private:
             }
             return true;
         }
+#endif
         auto& hid = UsbHid::getInstance();
 
         switch(key) {

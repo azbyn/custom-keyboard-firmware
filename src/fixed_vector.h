@@ -3,9 +3,14 @@
 #include <stddef.h>
 #include <array>
 
+#include <type_traits> //is_trivial_v
+
 template<typename T, size_t Size>
 class FixedVector {
-    std::array<T, Size> _data;//[Size];
+    static_assert(std::is_trivially_destructible_v<T>, "Only trivially destructible types are supported");
+    //static_assert(std::is_trivial_v<T>, "Only trivially constructble/destructible types are supported");
+
+    std::array<T, Size> _data;
     size_t _len;
 
 public:
@@ -13,6 +18,8 @@ public:
     //i could make an initialiser list constructor but i don't need to use it so i won't
 
     constexpr const auto& array() const noexcept { return _data; }
+
+    constexpr const T* data() const noexcept { return _data.data(); }
 
     constexpr const T* begin() const noexcept { return _data.begin(); }
     constexpr const T* end() const noexcept { return _data.begin() + _len; }
@@ -34,8 +41,13 @@ public:
     /// @param x 
     /// @return if no space is left, return false
     constexpr bool push_back(const T& x) {
-        if (_len +1 >= Size) return false;
+        if (_len + 1 >= Size) return false;
         _data[_len++] = x;
+        return true;
+    }
+     constexpr bool push_back(T&& x) {
+        if (_len + 1 >= Size) return false;
+        _data[_len++] = std::move(x);
         return true;
     }
 
@@ -51,6 +63,9 @@ public:
         }
         _len += len;
         return true;
+    }
+    constexpr bool can_push_n(size_t len) const {
+        return _len + len < Size;
     }
     
 

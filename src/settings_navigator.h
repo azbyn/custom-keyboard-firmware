@@ -63,7 +63,7 @@ struct SettingItem {
     (SettingItem { \
         .name = _name,\
         .move = [] (int value, [[maybe_unused]] KeyboardStateSnapshot& s) {\
-            auto new_val = _what - value;\
+            auto new_val = _what + value;\
             \
             if (new_val < 0) {\
                 new_val = _OptionsSize - 1;\

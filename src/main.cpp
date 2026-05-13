@@ -16,7 +16,11 @@ DisplayCharSink& DisplayCharSink::operator=(char c) {
     return *this;
 }
 CdcCharSink& CdcCharSink::operator=(char c) {
-    UsbCdc::getInstance().putc(c);
+    if (c == '\n') {
+        UsbCdc::getInstance().print("\r\n");
+    } else {
+        UsbCdc::getInstance().putc(c);
+    }
     return *this;
 }
 
