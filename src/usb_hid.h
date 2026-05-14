@@ -14,21 +14,18 @@
 #include "utils.h"
 #include "keyboard_state_machine.h"
 
+#include "key_with_modifier.h"
+
 constexpr uint8_t BOARD_TUD_RHPORT = 0;
 constexpr uint8_t REPORT_ID_KEYBOARD = 1;
 constexpr uint8_t REPORT_ID_CONSUMER_CONTROL = 2;
 
-#define HID_KEY_WILDCARD HID_KEY_F13
 
 #define HID_KEY_ERR_ROLLOVER 0x01
 //#define BOARD_TUD_RHPORT      0
 //#define REPORT_ID_KEYBOARD  1
 //#define REPORT_LEN 6
 
-struct KeyWithModifier {
-    uint8_t modifiers;
-    uint8_t key;
-};
 
 void onKbdLedRequest(uint8_t state);
 // {
@@ -55,12 +52,22 @@ struct NkroReport {
         if (keycode == 0) return;
         this->keys.set(keycode, false);
     }
+
+    static NkroReport fromKeyWithModifier(KeyWithModifier val) {
+        NkroReport res;
+        res.modifiers = val.modifiers;
+        res.keys.set(val.key, true);
+        return res;
+    }
 };
 static_assert(sizeof(NkroReport) == decltype(NkroReport::keys)::sizeBytes()+2);
 
 //a singleton class is used here because i don't have to forward declare everything
 class UsbHid {
-    FixedVector<KeyWithModifier, 512/*256*/> sequence_buffer;
+    FixedVector<NkroReport, 512/*256*/> reportQueue;
+
+
+    //FixedVector<KeyWithModifier, 512/*256*/> sequence_buffer;
     NkroReport keyReport;
 
     bool sendingConsumerKey = false;
@@ -87,8 +94,9 @@ public:
     }
     UsbHid(const UsbHid&) = delete;
     UsbHid& operator=(const UsbHid&) = delete;
+    UsbHid(UsbHid&&) = delete;
+    UsbHid& operator=(UsbHid&&) = delete;
 
-    RepeatReportType getRepeatReportType() const;
 
 
 private:
@@ -113,10 +121,14 @@ public:
     }
     void update() {
         tud_task(); // tinyusb device task
-        if (!sequence_buffer.empty()) {
-            if (millis() > lastSendSeqMs+100)
-                sendReportFromSequence();
+        if (!reportQueue.empty()) {
+           // if (millis() > lastSendSeqMs+100)
+            tryToSendReportFromQueueNow();
         }
+        // if (!sequence_buffer.empty()) {
+        //     if (millis() > lastSendSeqMs+100)
+        //         sendReportFromSequence();
+        // }
         //if 
     }
     void setModifierState(uint8_t modifier, bool state, bool _sendReport = true) {
@@ -124,8 +136,9 @@ public:
             this->keyReport.modifiers |= modifier;
         else
             this->keyReport.modifiers &= ~modifier;
-        if (_sendReport)
-            sendReport(false);
+        if (_sendReport) {
+            trySendCurrentState();
+        }
     }
     constexpr uint8_t getModifiers() const { return keyReport.modifiers; }
     constexpr bool getShiftState() const { 
@@ -141,20 +154,36 @@ public:
         return getModifiers() & (KEYBOARD_MODIFIER_RIGHTGUI | KEYBOARD_MODIFIER_LEFTGUI);
     }
     
+
+private:
+    void trySendCurrentState() {
+        if (!reportQueue.push_back(keyReport)) {
+            display_print("TOOMANYKEYS");
+            return;
+        } 
+        tryToSendReportFromQueueNow();
+    }
+public:
     void press(uint8_t key) {
         keyReport.addKeyToKeyreport(key);
-        sendReport(false);
+        trySendCurrentState();
+       
     }
     void release(uint8_t key) {
         keyReport.removeKeyFromKeyreport(key);
-
-        sendReport(false);
+        trySendCurrentState();
     }
     void pressMedia(uint16_t key) {
+        bool ok = usbHidWorks() || KeyboardStateMachine::getStateSnapshot().sendCodesWhenKbdUnmounted;
+        if (!ok) return;
+
         tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &key, 2);
         sendingConsumerKey = true;
     }
     void releaseMedia() {
+        bool ok = usbHidWorks() || KeyboardStateMachine::getStateSnapshot().sendCodesWhenKbdUnmounted;
+        if (!ok) return;
+
         uint16_t empty_key = 0;
 
         tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &empty_key, 2);
@@ -166,14 +195,55 @@ public:
     /// @param len 
     /// @return returns true if all good, returns false if buffer is full 
     bool sendSequence(const KeyWithModifier* seq, size_t len) {
-        auto res = sequence_buffer.push_n(seq, len);
-        if (!res) return res;
-        if (sequence_buffer.empty())
-            sendReportFromSequence();
+        //bool wasEmpty = sequence_buffer.empty();
+        if (!reportQueue.can_push_n(len)) return false;
+
+        for (size_t i = 0; i < len; ++i) {
+            //already checked for bounds
+            reportQueue.push_back(NkroReport::fromKeyWithModifier(seq[i]));
+        }
+        
+        tryToSendReportFromQueueNow();
             
         return true;
     }
 private:
+    bool reportInFlight = false;
+    
+    void tryToSendReportFromQueueNow() {
+        if (reportInFlight) return;
+        if (reportQueue.empty()) return;
+        if (!tud_hid_ready()) return;
+
+        reportInFlight = true;
+
+
+        lastSendSeqMs = millis();
+        NkroReport report = reportQueue.pop_front();
+
+
+        bool isRepeatedReport = false;
+        if (isNkro()) {
+            return this->sendReport_nkro(report, isRepeatedReport);
+        }
+        
+        FixedVector<uint8_t, 6> keysReport = {};
+        for (size_t i = 0; i < report.keys.actualCapacity(); ++i)  {
+            if (!report.keys.get(i)) continue;
+            bool hasSpace = keysReport.push_back(i);
+            if (!hasSpace) {
+                for (size_t j = 0; j < keysReport.size(); ++j) {
+                    keysReport[j] = HID_KEY_ERR_ROLLOVER;
+                }
+                break;
+            }
+        }
+
+       
+        this->sendReport_6k(this->getModifiers(), keysReport.data(), isRepeatedReport);
+    }
+
+
     // template <bool useKeypad>
     uint8_t hexDigitToKey(char c, bool useKeypad) {
         //no real error handling, we just call it from below where we know we only get 0-9, A-F
@@ -262,51 +332,17 @@ public:
         }
         
         keys.push_back({0, 0});
-        return sendSequence(keys.begin(), keys.size());
+        return sendSequence(keys.data(), keys.size());
     }
 
-    //for debuggin reasons
-    size_t seq_buffer_size() const {
-        return sequence_buffer.size();
-    }
+    // //for debuggin reasons
+    // size_t seq_buffer_size() const {
+    //     return sequence_buffer.size();
+    // }
     
 private:
     uint32_t lastSendSeqMs = 0;
 
-    void sendReportFromSequence() {
-        lastSendSeqMs = millis();
-        
-        if (sequence_buffer.empty()) return;
-    
-        auto x = sequence_buffer.pop_front();
-
-        if (isNkro()) {
-            NkroReport rep;
-            rep.modifiers = x.modifiers;
-            rep.keys.set(x.key, true);
-            sendReport_nkro(rep, false);
-            return;
-        } 
-
-
-        // Display::printf("S%d-", sequence_buffer.size());
-        #if 0
-        display_printf("[%d-", sequence_buffer.size());
-
-        printKey(x);
-        if (sequence_buffer.empty()) {
-            display_print("\n");
-        } else {
-            display_print(";");
-        }
-        #endif
-
-        uint8_t keys[6] = {};
-
-        keys[0] = x.key;
-
-        sendReport_6k(x.modifiers, keys, false);
-    }
     int numSentRepeatedReport = 0;
     void sendReport_nkro(const NkroReport& report, bool isRepeatedReport) {    
         if (isRepeatedReport) {
@@ -520,28 +556,7 @@ public:
             display_print(maybeKey);
         // if (buffer) 
     }
-public:
-    void sendReport(bool isRepeatedReport) {
-        
-        if (isNkro()) {
-            return this->sendReport_nkro(this->keyReport, isRepeatedReport);
-        }
-        
-        FixedVector<uint8_t, 6> keysReport = {};
-        for (size_t i = 0; i < this->keyReport.keys.actualCapacity(); ++i)  {
-            if (!this->keyReport.keys.get(i)) continue;
-            bool hasSpace = keysReport.push_back(i);
-            if (!hasSpace) {
-                for (size_t j = 0; j < keysReport.size(); ++j) {
-                    keysReport[j] = HID_KEY_ERR_ROLLOVER;
-                }
-                break;
-            }
-        }
 
-       
-        this->sendReport_6k(this->getModifiers(), keysReport.begin(), isRepeatedReport);
-    }
 public:
     // Invoked when sent REPORT successfully to host
     // Application can use this to send the next report
@@ -559,27 +574,8 @@ public:
                 return;
             }
         } else if (report[0] == REPORT_ID_KEYBOARD) {
-            if (sequence_buffer.empty()) {
-                auto rrt = getRepeatReportType();
-                switch (rrt) {
-                    case RRT__Size: break;//shouldn't happen
-                    case RRT_No: break;//don't send the report again
-                    case RRT_One:
-                        if (!numSentRepeatedReport)
-                            sendReport(true);  
-                        break;
-                    case RRT_Five:
-                        if (numSentRepeatedReport < 5)
-                            sendReport(true);
-                        break;
-                    case RRT_Infinite: 
-                        sendReport(true);  
-                        break;
-                }
-                return;
-            }
-
-            sendReportFromSequence();
+            tryToSendReportFromQueueNow();
+            reportInFlight = false;
         }
     }
 

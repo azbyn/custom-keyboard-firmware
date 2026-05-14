@@ -195,17 +195,6 @@ class SettingsNavigator {
                 res[UIM_Linux] = "Linux";
                 return res;
             }()));
-    static constexpr SettingItem reportRepeatMode =
-        ENUM_SETTING("RepeatReport", s.repeatReportType, RRT__Size, 
-            ([] {
-                std::array<const char*, RRT__Size> res;
-                res[RRT_No] = "No";
-                res[RRT_One] = "One";
-                res[RRT_Five] = "Five";
-
-                res[RRT_Infinite] = "Inf";
-                return res;
-            }()));
     static constexpr SettingItem version = {
         .name = "Version",
         .move = [] (int, KeyboardStateSnapshot&) {},
@@ -215,7 +204,6 @@ public:
     static constexpr SettingItem settingItems[] = {
         version,
         unicodeInputModeSetting,
-        reportRepeatMode,
 
         BOOL_SETTING("Snd key umnted", s.sendCodesWhenKbdUnmounted),
 

@@ -14,13 +14,13 @@ enum UnicodeInputMode: int {
     UIM__Size,
 };
 
-enum RepeatReportType: int {
-    RRT_No = 0,
-    RRT_One,
-    RRT_Five,
-    RRT_Infinite,
-    RRT__Size,
-};
+// enum RepeatReportType: int {
+//     RRT_No = 0,
+//     RRT_One,
+//     RRT_Five,
+//     RRT_Infinite,
+//     RRT__Size,
+// };
 
 enum DisplayState {
     // DS_OFF,
@@ -42,7 +42,7 @@ struct KeyboardStateSnapshot {
     bool nkro = true;
     bool cdcEnabled = false;
 
-    RepeatReportType repeatReportType = RRT_No;// RRT_Five;
+    // RepeatReportType repeatReportType = RRT_No;// RRT_Five;
 
 
     //not part of "DisplayState" so we can remember the previous state
